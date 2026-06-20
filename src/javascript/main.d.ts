@@ -44,7 +44,7 @@ export interface AdvancedEncConfig {
 //分段加密和分段传输的配置。
 //每段密文单独执行高级加密，但是，AONT在高级加密之后单独执行。
 export interface FlexibleTransferConfig {
-  /** 指定是否启用灵活传输功能，默认 false/不开启，想要启用此项，必须启用高级加密; */
+  /** 指定是否启用灵活传输功能，默认 false/不开启 */
   Enable?: boolean;
   /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢*/
   UseAONT?: boolean;

@@ -11,6 +11,7 @@
  */
 import { Base64 } from "js-base64";
 import MersenneTwister from "mersenne-twister"; //兼容性
+import CryptoJS from "crypto-js";
 import { random } from "@lukeed/csprng"; //密码学安全随机数的封装
 
 const SIG_DECRYPT_JP = "桜込凪雫実沢";
@@ -143,7 +144,11 @@ export function shuffle(array) {
 }
 
 /**
+ * 工具函数
+ *
  * 将四个 0/1（或 true/false）和一个 0..15 整数打包成一个 0..255 的字节值
+ * 用于包装高级加密的配置位
+ *
  * @param {number|boolean} b0 - 最低位（bit0）
  * @param {number|boolean} b1 - bit1
  * @param {number|boolean} b2 - bit2
@@ -168,7 +173,10 @@ export function packByte(b0, b1, b2, b3, size) {
 }
 
 /**
- * 将字节解包回原始的四个 bit 与 size
+ * 工具函数
+ *
+ * 用于解包装高级加密的配置位
+ *
  * @param {number} byte - 0..255
  * @returns {object} { byte, size, bits: [b0,b1,b2,b3] (数字 0/1), flags: {b0,b1,b2,b3} (布尔值) }
  */
@@ -194,6 +202,144 @@ export function unpackByte(byte) {
   };
 }
 
+/**
+ * 工具函数
+ *
+ * 将四个分段传输参数(合共48位，6字节)打包成字节值
+ * 用于包装高级加密的配置位
+ *
+ * @param{number} lengthToBoundary - 检测到标头的位置距离边界还有多少个载荷字(0~511)
+ * @param{number} messageID - 消息辨识ID(0~4095)
+ * @param{number} SerialNumber - 消息序号(0~4095)
+ * @param{boolean} UseAONT - 本段消息是否使用了AONT(全有或全无转换)
+ * @param{string} key - 明文密钥，若提供则自动执行 AES-CTR 局部加密
+ * @param{number} iv - 14bit的初始向量 (0~16383)
+ * @returns{Uint8Array} 一个字节数组，长度为6。
+ */
+export function packFlexibleTransferConfig(
+  lengthToBoundary,
+  messageID,
+  SerialNumber,
+  UseAONT,
+  key = null,
+  iv = 0
+) {
+  // 1. 安全掩码截断：防止外部传入的数值过大导致位溢出
+  const len = lengthToBoundary & 0x1ff; // 9 bits (最大 511)
+  const msg = messageID & 0xfff; // 12 bits (最大 4095)
+  const ser = SerialNumber & 0xfff; // 12 bits (最大 4095)
+  const aont = UseAONT ? 1 : 0; // 1 bit
+
+  const safeIv = iv & 0x3fff; // 14 bits (最大 16383)
+
+  // 2. 避免 JS 32位位移溢出，将 48 位切割为高 24 位与低 24 位
+  const high24 = (len << 15) | (msg << 3) | (ser >> 9);
+  const low24 = ((ser & 0x1ff) << 15) | (aont << 14) | safeIv;
+
+  // 3. 将 24 位区块映射为 Uint8Array (大端序 Big-Endian)
+  const buffer = new Uint8Array(6);
+  buffer[0] = (high24 >> 16) & 0xff;
+  buffer[1] = (high24 >> 8) & 0xff;
+  buffer[2] = high24 & 0xff;
+  buffer[3] = (low24 >> 16) & 0xff;
+  buffer[4] = (low24 >> 8) & 0xff;
+  buffer[5] = low24 & 0xff;
+
+  // 4. CryptoJS 局部加密逻辑 (若传入了 KEY)
+  if (key) {
+    // 【步骤 A】：派生 AES 的实际加密 Key -> SHA256(KEY)
+    const hash1 = CryptoJS.SHA256(key);
+
+    // 【步骤 B】：派生实际的 IV (CTR 计数器块)
+    // 14bit 扩充填充到 16bit (2字节)
+    const ivByte0 = (safeIv >> 8) & 0xff;
+    const ivByte1 = safeIv & 0xff;
+
+    // 手动将 2 字节转换为 CryptoJS 的 WordArray 格式，避免版本兼容问题
+    const ivWord = (ivByte0 << 24) | (ivByte1 << 16);
+    const ivWordArr = CryptoJS.lib.WordArray.create([ivWord], 2);
+
+    // actualIV = SHA256( Hash1 + 2字节的IV )
+    const concatData = hash1.clone().concat(ivWordArr);
+    const actualIV = CryptoJS.SHA256(concatData);
+
+    // 【步骤 C】：生成 CTR 密钥流 (Keystream)
+    // 截取 actualIV 的前 16 字节(128 bit)作为 AES 的计数器块
+    const counterBlock = CryptoJS.lib.WordArray.create(
+      actualIV.words.slice(0, 4),
+      16
+    );
+
+    // 用 hash1 (第一层哈希) 作密钥，以 ECB 模式加密 counterBlock，
+    // 这在密码学上等价于输出了 CTR 模式的第一块密钥流。
+    const encryptedBlock = CryptoJS.AES.encrypt(counterBlock, hash1, {
+      mode: CryptoJS.mode.ECB,
+      padding: CryptoJS.pad.NoPadding,
+    });
+
+    // 将 CryptoJS 的 WordArray 输出无损转换为标准的 Uint8Array
+    const keystream = new Uint8Array(16);
+    const words = encryptedBlock.ciphertext.words;
+    for (let i = 0; i < 16; i++) {
+      keystream[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    }
+
+    // 【步骤 D】：掩码异或，精准加密前 34 bits
+    buffer[0] ^= keystream[0];
+    buffer[1] ^= keystream[1];
+    buffer[2] ^= keystream[2];
+    buffer[3] ^= keystream[3];
+    // 0xC0 = 11000000，精准异或高 2 位 (载荷)，保留低 6 位和第 5 字节的 8 位(合计 14bit IV) 绝对明文
+    buffer[4] ^= keystream[4] & 0xc0;
+  }
+
+  return buffer;
+}
+
+/**
+ * 工具函数
+ *
+ * 将四个分段传输参数(合共48位，6字节)逆向拆包
+ * 用于将 6 字节的 Uint8Array 还原为具体的配置参数
+ *
+ * @param {Uint8Array} buffer - 长度为 6 的字节数组 (需为解密后的数据)
+ */
+function unpackFlexibleTransferConfig(buffer) {
+  if (buffer.length !== 6) throw new Error("Buffer must be exactly 6 bytes");
+
+  // 1. 避免 JS 32位带符号整数溢出，将 6 字节分为高 24 位与低 24 位分别合并
+  const high24 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
+  const low24 = (buffer[3] << 16) | (buffer[4] << 8) | buffer[5];
+
+  // 2. 按约定的位宽与偏移量逐个提取字段
+  // [Length 9位]：提取 high24 的前 9 位 (右移 15 位，掩码 0x1FF)
+  const lengthToBoundary = (high24 >> 15) & 0x1ff;
+
+  // [MessageID 12位]：提取 high24 的中间 12 位 (右移 3 位，掩码 0xFFF)
+  const messageID = (high24 >> 3) & 0xfff;
+
+  // [SerialNumber 12位]：跨越了高低 24 位的分界线，需拆解并重新缝合
+  const serHigh3 = high24 & 0x7; // 截取 high24 剩余的低 3 位
+  const serLow9 = (low24 >> 15) & 0x1ff; // 截取 low24 开头的高 9 位
+  const SerialNumber = (serHigh3 << 9) | serLow9; // 重新拼装为 12 位的完整序号
+
+  // [UseAONT 1位]：提取 low24 中紧接其后的 1 位
+  const UseAONT = ((low24 >> 14) & 0x1) === 1;
+
+  // [IV 14位]：提取 low24 最后剩余的 14 位 (掩码 0x3FFF)
+  const iv = low24 & 0x3fff;
+
+  return { lengthToBoundary, messageID, SerialNumber, UseAONT, iv };
+}
+
+/**
+ * 工具函数
+ *
+ * 获取TOTP加密时候，十六个步长选项对应的实际步长(秒数)
+ *
+ * @param{number} key 整数(0~15)
+ *
+ */
 export function getStep(key) {
   let second = 0;
   /* v8 ignore next 50 */
@@ -258,7 +404,6 @@ export class ValueNoise1D {
    * 在一些不适合纯随机分布的情况下适用。
    *
    * **/
-
   constructor(seed = Math.random()) {
     this.seed = seed;
   }
