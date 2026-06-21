@@ -16,7 +16,7 @@ export interface WenyanConfig {
 }
 
 export interface AdvancedEncConfig {
-  /** 指定是否启用高级加密功能，默认 false/不开启; */
+  /** 指定是否启用高级加密功能，默认 false/不开启; 灵活传输功能的启用与否，由其自身的属性单独控制*/
   Enable?: boolean;
   /** 指定是否使用完整16字节IV，默认 true/开启*/
   UseStrongIV?: boolean;
@@ -39,6 +39,11 @@ export interface AdvancedEncConfig {
    * 注意，TOTP的安全性主要依赖于此BaseKey
    */
   TOTPBaseKey?: string;
+  /**
+   * 指定灵活传输配置，若此项不是一个Object则默认不启用。
+   * 高级加密的Enable参数，对灵活传输不生效。
+   */
+  FlexibleTransfer?: FlexibleTransferConfig;
 }
 
 //分段加密和分段传输的配置。
@@ -48,7 +53,7 @@ export interface FlexibleTransferConfig {
   Enable?: boolean;
   /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢*/
   UseAONT?: boolean;
-  /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4096)*/
+  /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)*/
   MessengeID?: number;
 }
 

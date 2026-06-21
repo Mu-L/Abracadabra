@@ -206,7 +206,6 @@ export function unpackByte(byte) {
  * 工具函数
  *
  * 将四个分段传输参数(合共48位，6字节)打包成字节值
- * 用于包装高级加密的配置位
  *
  * @param{number} lengthToBoundary - 检测到标头的位置距离边界还有多少个载荷字(0~511)
  * @param{number} messageID - 消息辨识ID(0~4095)

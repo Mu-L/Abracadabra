@@ -51,6 +51,20 @@ export class WenyanConfig {
   }
 }
 
+export class FlexibleTransferConfig {
+  /**
+   * 魔曰 高级加密参数
+   *
+   * @param{bool}Enable 指定是否启用灵活传输功能，默认 false/不开启
+   * @param{bool}UseAONT 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢
+   * @param{number}MessengeID  指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)
+   */
+  constructor(Enable = false, UseAONT = true, MessengeID = -1) {
+    this.Enable = Enable;
+    this.UseAONT = UseAONT;
+    this.MessengeID = MessengeID;
+  }
+}
 export class AdvancedEncConfig {
   /**
    * 魔曰 高级加密参数
@@ -61,7 +75,9 @@ export class AdvancedEncConfig {
    * @param{bool}UsePBKDF2 指定是否对密钥加盐并使用密钥衍生函数 false/不开启;
    * @param{bool}UseTOTP 指定是否使用TOTP作为密钥衍生的盐值，默认 false/不开启，若不使用密钥衍生函数，则不生效;
    * @param{number}TOTPTimeStep 指定TOTP时间窗口，取值范围 0~15 对应 [3 5 10 30 min] [2 6 12 h] [1 3 5 d] [1 3 Week] [1 2 6 Month] [1 yr], 默认4;
-   * @param{number}TOTPEpoch 指定用于TOTP加密的Unix时间戳记，以毫秒为单位(JS标准)，默认为系统时间；
+   * @param{number}TOTPEpoch 指定用于TOTP加密的Unix时间戳记，以毫秒为单位(JS标准)，默认为系统时间;
+   * @param{string}TOTPBaseKey 指定用于TOTP加密的预共享密钥，默认为加密主密钥;
+   * @param{FlexibleTransferConfig}FlexibleTransfer 指定灵活传输配置，若此项不是一个Object则默认不启用，高级加密的Enable参数，对灵活传输不生效;
    */
   constructor(
     Enable = false,
@@ -71,7 +87,8 @@ export class AdvancedEncConfig {
     UseTOTP = false,
     TOTPTimeStep = 4,
     TOTPEpoch = Date.now(),
-    TOTPBaseKey = null
+    TOTPBaseKey = null,
+    FlexibleTransfer = new FlexibleTransferConfig()
   ) {
     this.Enable = Enable;
     this.UseStrongIV = UseStrongIV;
@@ -81,6 +98,7 @@ export class AdvancedEncConfig {
     this.TOTPTimeStep = TOTPTimeStep;
     this.TOTPEpoch = TOTPEpoch;
     this.TOTPBaseKey = TOTPBaseKey;
+    this.FlexibleTransfer = FlexibleTransfer;
   }
 }
 
