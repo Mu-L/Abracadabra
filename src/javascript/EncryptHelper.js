@@ -18,6 +18,8 @@ import {
   GetRandomIndex,
   getStep,
 } from "./Misc.js";
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { AdvancedEncConfig } from "./CoreHandler.js";
 
 function createDigestSHA256(algorithm, hmacKey, counter) {
@@ -122,19 +124,19 @@ function AES_256_CTR_HMAC_SHA256_E(
           : key
       );
       salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
-      let key256Bits = CryptoJS.PBKDF2(key, salt, {
-        keySize: 256 / 32,
-        iterations: 100000, //十万次迭代
+      let key256Bits = pbkdf2(sha256, key, salt, {
+        c: 100000,
+        dkLen: 32,
       });
-      KeyHash = key256Bits;
+      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
     } else {
       //普通密钥衍生，使用16字节的盐
       salt = CryptoJS.lib.WordArray.random(16);
-      let key256Bits = CryptoJS.PBKDF2(key, salt, {
-        keySize: 256 / 32,
-        iterations: 100000, //十万次迭代
+      let key256Bits = pbkdf2(sha256, key, wordArrayToUint8Array(salt), {
+        c: 100000,
+        dkLen: 32,
       });
-      KeyHash = key256Bits;
+      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
       ResultLength = ResultLength + 16;
     }
   }
@@ -225,11 +227,11 @@ function AES_256_CTR_HMAC_SHA256_D(
       salt[15 - i] = Uint8attr.at(Uint8attr.byteLength - 1 - i);
     }
     Uint8attr = Uint8attr.subarray(0, Uint8attr.byteLength - 16);
-    let key256Bits = CryptoJS.PBKDF2(key, CryptoJS.lib.WordArray.create(salt), {
-      keySize: 256 / 32,
-      iterations: 100000, //十万次迭代
+    let key256Bits = pbkdf2(sha256, key, salt, {
+      c: 100000,
+      dkLen: 32,
     });
-    KeyHash = key256Bits;
+    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
   } else if (AdvancedEncObj.UsePBKDF2 && AdvancedEncObj.UseTOTP) {
     //推导TOTP盐值
     totp.options = {
@@ -247,11 +249,11 @@ function AES_256_CTR_HMAC_SHA256_D(
         : key
     );
     salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
-    let key256Bits = CryptoJS.PBKDF2(key, salt, {
-      keySize: 256 / 32,
-      iterations: 100000, //十万次迭代
+    let key256Bits = pbkdf2(sha256, key, salt, {
+      c: 100000,
+      dkLen: 32,
     });
-    KeyHash = key256Bits;
+    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
   }
 
   if (AdvancedEncObj.UseHMAC) {
