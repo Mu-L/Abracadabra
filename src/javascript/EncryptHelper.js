@@ -17,6 +17,7 @@ import {
   Uint8ArrayTostring,
   GetRandomIndex,
   getStep,
+  i2osp,
 } from "./Misc.js";
 import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
 import { sha256 } from "@noble/hashes/sha2.js";
@@ -382,4 +383,129 @@ export function Decrypt(Data, key, AdvancedEncObj = null) {
 
     return Data;
   }
+}
+
+/**
+ * 基于 SHA-256 的 MGF1 实现
+ *
+ * @param {Uint8Array} seed - 输入的随机种子
+ * @param {number} maskLen - 需要生成的掩码目标长度 (字节数)
+ * @returns {Uint8Array} - 生成的指定长度的伪随机掩码
+ */
+function mgf1_sha256(seed, maskLen) {
+  const hLen = 32; // SHA-256 的输出长度固定为 32 字节 (256 bits)
+
+  // RFC 8017 规定: 掩码长度不能超过 2^32 * hLen
+  // 在 JS 中处理超大文件时要注意内存限制，通常不会触发这个上限
+  if (maskLen > 2 ** 32 * hLen) {
+    throw new Error("Mask too long");
+  }
+
+  // 预先分配最终输出的内存空间
+  const mask = new Uint8Array(maskLen);
+
+  // 计算需要循环调用哈希函数的次数 (向上取整)
+  const iterations = Math.ceil(maskLen / hLen);
+
+  let offset = 0; // 记录当前已经填充到 mask 的字节位置
+
+  for (let counter = 0; counter < iterations; counter++) {
+    // 1. 将计数器转换为 4 字节的大端序字节串 C
+    const C = i2osp(counter);
+
+    // 2. 拼接 seed 和 C (即 RFC 中的 seed || C)
+    const dataToHash = new Uint8Array(seed.length + 4);
+    dataToHash.set(seed, 0);
+    dataToHash.set(C, seed.length);
+
+    // 3. 计算拼接后数据的 SHA-256 哈希值
+    // 【注意】这里调用你的自定义/高效 SHA-256 库
+    const hashBlock = sha256(dataToHash);
+
+    // 4. 将哈希块拷贝到最终的 mask 数组中
+    // 最后一次循环可能不需要完整的 32 字节，计算剩余需要的字节数
+    const bytesToCopy = Math.min(hLen, maskLen - offset);
+
+    // 使用 subarray 提取需要的字节，并通过 set 写入目标位置
+    mask.set(hashBlock.subarray(0, bytesToCopy), offset);
+
+    offset += bytesToCopy;
+  }
+
+  return mask; // 输出生成的掩码流
+}
+
+/**
+ * 基于 SHA-256 的 AONT(全有或全无转换)
+ *
+ * @param {Uint8Array} Data 原始数据
+ * @returns {Uint8Array} AONT处理后数据
+ */
+export function EnAONT(Data) {
+  let Seed = new Uint8Array(32);
+
+  for (let i = 0; i < 32; i++) {
+    //获取随机种子
+    Seed[i] = GetRandomIndex(256);
+  }
+
+  //生成掩码，使用mgf1算法，配合SHA256
+  let Mask = mgf1_sha256(Seed, Data.byteLength);
+
+  // 将掩码和原始数据执行异或
+  let MaskedData = new Uint8Array(Data.byteLength);
+
+  for (let i = 0; i < Data.byteLength; i++) {
+    MaskedData[i] = Data[i] ^ Mask[i];
+  }
+
+  //计算异或后数据的哈希
+  let MaskedDataHash = sha256(MaskedData);
+
+  //将异或后数据的哈希，和种子本身执行异或，得到控制块。
+  let ControlBlock = new Uint8Array(32);
+
+  for (let i = 0; i < Seed.byteLength; i++) {
+    ControlBlock[i] = Seed[i] ^ MaskedDataHash[i];
+  }
+
+  //把控制块和异或后数据拼接在一起。
+  let Result = new Uint8Array(MaskedData.byteLength + ControlBlock.byteLength);
+
+  Result.set(MaskedData, 0);
+  Result.set(ControlBlock, MaskedData.byteLength);
+
+  return Result;
+}
+
+/**
+ * 基于 SHA-256 的 AONT(全有或全无转换) 逆处理函数
+ *
+ * @param {Uint8Array} Data AONT处理后数据
+ * @returns {Uint8Array} 原始数据
+ */
+export function DeAONT(Data) {
+  let MaskedData = Data.subarray(0, -32);
+  let ControlBlock = Data.subarray(-32);
+
+  //计算异或后数据的哈希
+  //如果有任何一丁点数据没有成功传输，则此哈希是错误的，因此，还原出的消息种子也是错误的，因此，还原出的消息也是错误的。
+  let MaskedDataHash = sha256(MaskedData);
+
+  //计算消息种子
+  let Seed = new Uint8Array(32);
+  for (let i = 0; i < Seed.byteLength; i++) {
+    Seed[i] = ControlBlock[i] ^ MaskedDataHash[i];
+  }
+
+  //计算掩码
+  let Mask = mgf1_sha256(Seed, MaskedData.byteLength);
+
+  let Result = new Uint8Array(MaskedData.byteLength);
+
+  for (let i = 0; i < MaskedData.byteLength; i++) {
+    Result[i] = MaskedData[i] ^ Mask[i];
+  }
+
+  return Result;
 }

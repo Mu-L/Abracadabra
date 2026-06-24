@@ -332,6 +332,23 @@ function unpackFlexibleTransferConfig(buffer) {
 }
 
 /**
+ * 标准整数到字节串的转换 (I2OSP) - 32 位大端序
+ * 将循环的计数器转换为 4 个字节的 Uint8Array
+ *
+ * @param {number} counter - 当前的循环计数器
+ * @returns {Uint8Array} - 4字节的大端序字节数组
+ */
+export function i2osp(counter) {
+  const c = new Uint8Array(4);
+  // 使用无符号右移 (>>>) 和位与 (&) 提取各个字节
+  c[0] = (counter >>> 24) & 0xff;
+  c[1] = (counter >>> 16) & 0xff;
+  c[2] = (counter >>> 8) & 0xff;
+  c[3] = counter & 0xff;
+  return c;
+}
+
+/**
  * 工具函数
  *
  * 获取TOTP加密时候，十六个步长选项对应的实际步长(秒数)

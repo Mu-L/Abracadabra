@@ -12,5 +12,6 @@ dist
 demo.zip
 text.html
 coverage
+temptests.test.js
 
 /docs/.vitepress/cache
