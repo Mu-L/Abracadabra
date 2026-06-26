@@ -102,9 +102,12 @@ export class AdvancedEncConfig {
   }
 }
 
-//魔数，用于自动识别高级加密数据，理论上需要附加正常加密/解密时绝不可能在开头出现的Base64编码范围内字符
+//标头，用于自动识别高级加密数据，理论上需要附加正常加密/解密时绝不可能在开头出现的Base64编码范围内字符
 const ADVANCED_ENC_MAGIC = "+=";
+//标头，用于自动识别灵活传输数据
+const FLEXIBLE_TRANSFER_MAGIC = "=/";
 
+// =/+= +=/=
 export class CallbackObj {
   /**
    * 魔曰 Debug 回调位点对象
@@ -144,10 +147,15 @@ export function Enc(
 ) {
   //初始化
   //input.output Uint8Array
-  let WenyanSimulatorObj = new WenyanSimulator(key, callback);
-
   let OriginalData = new Uint8Array();
   OriginalData = input.output;
+
+  //如果灵活传输已经激活，则进入递归程序
+  //if ((AdvancedEncObj.FlexibleTransfer.Enable = true)) {
+  //}
+
+  let WenyanSimulatorObj = new WenyanSimulator(key, callback);
+
   let TempS;
   TempS = Uint8ArrayTostring(OriginalData);
 

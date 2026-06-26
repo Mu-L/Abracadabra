@@ -449,6 +449,53 @@ export class ValueNoise1D {
   }
 }
 
+/**
+ * 工具函数
+ * 在长字符串的随机位置插入一个或两个子串，保证不破坏子串完整性
+ *
+ * @param {string} originalStr 原始长字符串
+ * @param {string} sub1 必须提供的第一个子串
+ * @param {string} [sub2] 可选的第二个子串
+ * @returns {string} 拼接后的新字符串
+ */
+export function insertSubstrings(originalStr, sub1, sub2 = undefined) {
+  const L = originalStr.length;
+
+  // 如果 sub2 未传入、为 undefined 或为空字符串，则走单子串逻辑
+  if (!sub2) {
+    const i = Math.floor(GetRandomIndex(L));
+    return originalStr.slice(0, i) + sub1 + originalStr.slice(i);
+  }
+
+  //随机选取 sub1 的插入位置 i1 (范围: 0 到 L)
+  const i1 = Math.floor(GetRandomIndex(L));
+
+  //随机选取 sub2 的虚拟插入位置 r (范围: 0 到 L + 1)
+  const r = Math.floor(GetRandomIndex(L + 1));
+
+  //计算切片并执行单次字符串拼接
+  if (r <= i1) {
+    // sub2 插入在 sub1 的前面
+    return (
+      originalStr.slice(0, r) +
+      sub2 +
+      originalStr.slice(r, i1) +
+      sub1 +
+      originalStr.slice(i1)
+    );
+  } else {
+    // sub2 插入在 sub1 的后面
+    const r_orig = r - 1;
+    return (
+      originalStr.slice(0, i1) +
+      sub1 +
+      originalStr.slice(i1, r_orig) +
+      sub2 +
+      originalStr.slice(r_orig)
+    );
+  }
+}
+
 export function preCheck_OLD(inp) {
   let input = String(inp);
   let size = input.length; //第一次遍历字符数组的函数，负责判断给定的输入类型。
