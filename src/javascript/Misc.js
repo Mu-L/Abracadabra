@@ -451,49 +451,52 @@ export class ValueNoise1D {
 
 /**
  * 工具函数
- * 在长字符串的随机位置插入一个或两个子串，保证不破坏子串完整性
+ * 使用一个简单的算法，把灵活传输的数据字节分成多个段，返回一个数组
  *
- * @param {string} originalStr 原始长字符串
- * @param {string} sub1 必须提供的第一个子串
- * @param {string} [sub2] 可选的第二个子串
- * @returns {string} 拼接后的新字符串
+ * @param{number}totalLength 传入一段密文的总载荷
+ * @param{number}minLen 指定一段密文的最低载荷量
+ * @param{number}maxLen 指定一段密文的最高载荷量
+ * @returns{Array} 返回处理后的数组
  */
-export function insertSubstrings(originalStr, sub1, sub2 = undefined) {
-  const L = originalStr.length;
+export function distributeFlexibleTransfer(
+  totalLength,
+  minLen = 20,
+  maxLen = 80
+) {
+  //传入非法的值将直接抛出错误
+  if (minLen < 10 || maxLen > 380 || maxLen < minLen) {
+    throw "Invalid Payload Distribution Argument.";
+  }
+  // 容错：如果总长甚至不够一个最小段落
+  if (totalLength <= maxLen) return [totalLength];
 
-  // 如果 sub2 未传入、为 undefined 或为空字符串，则走单子串逻辑
-  if (!sub2) {
-    const i = Math.floor(GetRandomIndex(L));
-    return originalStr.slice(0, i) + sub1 + originalStr.slice(i);
+  const chunks = [];
+  let remaining = totalLength;
+  let paragraphIndex = 0;
+
+  //将噪声生成器实例化
+  const noiseGen = new ValueNoise1D();
+
+  while (remaining > 0) {
+    // 获取当前波形值 (0.0 ~ 1.0)
+    // 步长 0.5 决定了波形的平缓程度。值越小，相邻段落长度越接近
+    let waveFactor = noiseGen.get(paragraphIndex * 0.5);
+
+    //映射到具体长度
+    let currentLen = Math.floor(minLen + waveFactor * (maxLen - minLen));
+
+    //边界收敛
+    if (currentLen >= remaining || remaining - currentLen < minLen) {
+      chunks.push(remaining); // 把剩下的全部打包成最后一段
+      break;
+    }
+
+    chunks.push(currentLen);
+    remaining -= currentLen;
+    paragraphIndex++;
   }
 
-  //随机选取 sub1 的插入位置 i1 (范围: 0 到 L)
-  const i1 = Math.floor(GetRandomIndex(L));
-
-  //随机选取 sub2 的虚拟插入位置 r (范围: 0 到 L + 1)
-  const r = Math.floor(GetRandomIndex(L + 1));
-
-  //计算切片并执行单次字符串拼接
-  if (r <= i1) {
-    // sub2 插入在 sub1 的前面
-    return (
-      originalStr.slice(0, r) +
-      sub2 +
-      originalStr.slice(r, i1) +
-      sub1 +
-      originalStr.slice(i1)
-    );
-  } else {
-    // sub2 插入在 sub1 的后面
-    const r_orig = r - 1;
-    return (
-      originalStr.slice(0, i1) +
-      sub1 +
-      originalStr.slice(i1, r_orig) +
-      sub2 +
-      originalStr.slice(r_orig)
-    );
-  }
+  return chunks;
 }
 
 export function preCheck_OLD(inp) {

@@ -55,6 +55,14 @@ export interface FlexibleTransferConfig {
   UseAONT?: boolean;
   /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)*/
   MessengeID?: number;
+  /**
+   * 指定所使用的分段函数每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
+   *
+   * 注意，灵活传输的分段为字节级，而非载荷字级。二者互不干涉。
+   *
+   * *380字节约为500个以上的载荷字
+   */
+  RandomPragraphing?: [number, number];
 }
 
 export interface CallbackObj {

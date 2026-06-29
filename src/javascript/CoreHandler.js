@@ -12,7 +12,7 @@
 import { Base64 } from "js-base64";
 import { OldMapper, WenyanSimulator } from "./ChineseMappingHelper";
 import { Compress, Decompress } from "./CompressionHelper.js";
-import { Decrypt, Encrypt } from "./EncryptHelper";
+import { Decrypt, EnAONT, Encrypt } from "./EncryptHelper";
 
 import {
   Uint8ArrayTostring,
@@ -22,6 +22,8 @@ import {
   packByte,
   unpackByte,
   GetRandomIndex,
+  distributeFlexibleTransfer,
+  insertStringAtIndex,
 } from "./Misc.js";
 
 export class WenyanConfig {
@@ -30,7 +32,7 @@ export class WenyanConfig {
    *
    * @param{bool}PunctuationMark 指定是否为密文添加标点符号，默认 true/添加;
    * @param{int}RandomIndex 密文算法的随机程度，越大随机性越强，默认 50，最大100，超过100将会出错;
-   * @param{Array}RandomPragraphing 密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错;
+   * @param{[number, number]}RandomPragraphing 密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错;
    * @param{bool}PianwenMode 指定是否强制生成骈文密文，默认 false;
    * @param{bool}LogicMode 指定是否强制生成逻辑密文，默认 false;
    */
@@ -58,11 +60,26 @@ export class FlexibleTransferConfig {
    * @param{bool}Enable 指定是否启用灵活传输功能，默认 false/不开启
    * @param{bool}UseAONT 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢
    * @param{number}MessengeID  指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)
+   * @param{[number, number]}RandomPragraphing 指定分段加密每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
    */
-  constructor(Enable = false, UseAONT = true, MessengeID = -1) {
+  constructor(
+    Enable = false,
+    UseAONT = true,
+    MessengeID = -1,
+    RandomPragraphing = [20, 80]
+  ) {
     this.Enable = Enable;
     this.UseAONT = UseAONT;
     this.MessengeID = MessengeID;
+    this.RandomPragraphing = RandomPragraphing;
+    if (
+      RandomPragraphing[0] < 10 ||
+      RandomPragraphing[1] > 380 ||
+      RandomPragraphing[1] < RandomPragraphing[0]
+    ) {
+      throw "Invalid Flexible Transfer Argument.";
+    }
+    this.isRecursion = false; //初始化递归状态
   }
 }
 export class AdvancedEncConfig {
@@ -150,9 +167,55 @@ export function Enc(
   let OriginalData = new Uint8Array();
   OriginalData = input.output;
 
-  //如果灵活传输已经激活，则进入递归程序
-  //if ((AdvancedEncObj.FlexibleTransfer.Enable = true)) {
-  //}
+  //如果灵活传输已经激活，则进入递归程序；并避免无限递归。
+  if (
+    AdvancedEncObj.FlexibleTransfer &&
+    AdvancedEncObj.FlexibleTransfer.Enable &&
+    !AdvancedEncObj.FlexibleTransfer.isRecursion
+  ) {
+    /*高级灵活加密需要在两个地方介入
+     * 在本函数执行递归和加密标头封装，在转轮函数解密时执行标头判断和拦截，解密主函数需要判断转轮函数返回的数据是否为灵活加密数据。
+     * 转轮函数在拦截标头时，需要实时地封装灵活加密数据对象，将对象数组返回上一级，以供判断。
+     * 解密主函数需要针对MessageID执行一次分类，再依据各个分类中消息的序号执行排序，最后执行分段解密。若识别到AONT，还需要执行反AONT。
+     * 高级加密标头和灵活加密标头将一次性同时插入，下一版本中，高级加密标头允许插入到全段文本的任意位置，由转轮函数执行拦截和提取。
+     */
+
+    // 开始执行分段，分段采用余弦插值噪声
+    let PayloadLengthArray = distributeFlexibleTransfer(
+      OriginalData.byteLength,
+      AdvancedEncObj.FlexibleTransfer.RandomPragraphing[0],
+      AdvancedEncObj.FlexibleTransfer.RandomPragraphing[1]
+    );
+
+    //如果启用了AONT，则执行AONT。
+    if (AdvancedEncObj.FlexibleTransfer.UseAONT) {
+      OriginalData = EnAONT(OriginalData);
+    }
+
+    //先计算每段的字节长度，再根据字节长度来切分数组。
+    let SlicedDataArray = new Array(PayloadLengthArray.length);
+    let offset = 0;
+    for (let i = 0; i < PayloadLengthArray.length; i++) {
+      let chunkLength = PayloadLengthArray[i];
+
+      SlicedDataArray[i] = OriginalData.slice(offset, offset + chunkLength);
+      offset += chunkLength;
+    }
+
+    //开始递归
+    AdvancedEncObj.FlexibleTransfer.isRecursion = true;
+    let ResultArray = new Array(SlicedDataArray.length);
+    for (let i = 0; i < SlicedDataArray.length; i++) {
+      ResultArray[i] = Enc(
+        { output: SlicedDataArray[i] },
+        key,
+        WenyanConfigObj,
+        AdvancedEncObj,
+        callback
+      );
+    }
+    return ResultArray;
+  }
 
   let WenyanSimulatorObj = new WenyanSimulator(key, callback);
 
@@ -220,6 +283,8 @@ export function Enc(
   if (AdvancedEncObj.Enable) {
     //加上高级加密标头
     //OriginStr = ADVANCED_ENC_MAGIC + OriginStr;
+
+    //WIP 灵活传输标头。
 
     let InsertRange = OriginStr.length > 10 ? 10 : OriginStr.length - 1;
 
