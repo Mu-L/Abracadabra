@@ -24,6 +24,9 @@ import {
   GetRandomIndex,
   distributeFlexibleTransfer,
   insertStringAtIndex,
+  packFlexibleTransferConfig,
+  unpackFlexibleTransferConfig,
+  insertEncryptMarks,
 } from "./Misc.js";
 
 export class WenyanConfig {
@@ -80,6 +83,7 @@ export class FlexibleTransferConfig {
       throw "Invalid Flexible Transfer Argument.";
     }
     this.isRecursion = false; //初始化递归状态
+    this.RecursionSeqNum = 0;
   }
 }
 export class AdvancedEncConfig {
@@ -202,8 +206,15 @@ export function Enc(
       offset += chunkLength;
     }
 
-    //开始递归
+    //开始递归，初始化递归标志
     AdvancedEncObj.FlexibleTransfer.isRecursion = true;
+    AdvancedEncObj.FlexibleTransfer.RecursionSeqNum = 0;
+
+    if (AdvancedEncObj.FlexibleTransfer.MessengeID == -1) {
+      //随机消息ID
+      AdvancedEncObj.FlexibleTransfer.MessengeID = GetRandomIndex(4096);
+    }
+
     let ResultArray = new Array(SlicedDataArray.length);
     for (let i = 0; i < SlicedDataArray.length; i++) {
       ResultArray[i] = Enc(
@@ -213,6 +224,7 @@ export function Enc(
         AdvancedEncObj,
         callback
       );
+      AdvancedEncObj.FlexibleTransfer.RecursionSeqNum++;
     }
     return ResultArray;
   }
@@ -280,11 +292,9 @@ export function Enc(
 
   let OriginStr = RemovePadding(Base64.fromUint8Array(OriginalData)); //转Base64
 
-  if (AdvancedEncObj.Enable) {
+  /*if (AdvancedEncObj.Enable) {
     //加上高级加密标头
     //OriginStr = ADVANCED_ENC_MAGIC + OriginStr;
-
-    //WIP 灵活传输标头。
 
     let InsertRange = OriginStr.length > 10 ? 10 : OriginStr.length - 1;
 
@@ -294,6 +304,44 @@ export function Enc(
       OriginStr.slice(0, InsertIndex) +
       ADVANCED_ENC_MAGIC +
       OriginStr.slice(InsertIndex);
+  }*/
+  if (AdvancedEncObj.Enable) {
+    if (
+      AdvancedEncObj.FlexibleTransfer &&
+      AdvancedEncObj.FlexibleTransfer.Enable
+    ) {
+      //高级加密和灵活传输同时启用
+      OriginStr = insertEncryptMarks(
+        OriginStr,
+        ADVANCED_ENC_MAGIC,
+        packFlexibleTransferConfig,
+        AdvancedEncObj.FlexibleTransfer,
+        key
+      );
+    } else {
+      //只启用高级加密
+      OriginStr = insertEncryptMarks(
+        OriginStr,
+        ADVANCED_ENC_MAGIC,
+        null,
+        null,
+        null
+      );
+    }
+  } else {
+    if (
+      AdvancedEncObj.FlexibleTransfer &&
+      AdvancedEncObj.FlexibleTransfer.Enable
+    ) {
+      //只启用灵活传输
+      OriginStr = insertEncryptMarks(
+        OriginStr,
+        null,
+        packFlexibleTransferConfig,
+        AdvancedEncObj.FlexibleTransfer,
+        key
+      );
+    }
   }
 
   try {
@@ -344,12 +392,12 @@ export function Dec(
 
   let TempStr2Int = new Uint8Array();
 
-  if (TempStr1.slice(0, 13).indexOf(ADVANCED_ENC_MAGIC) !== -1) {
+  if (TempStr1.indexOf(ADVANCED_ENC_MAGIC) !== -1) {
     //检测高级加密标志
 
     TempStr1 =
-      TempStr1.slice(0, TempStr1.slice(0, 13).indexOf(ADVANCED_ENC_MAGIC)) +
-      TempStr1.slice(TempStr1.slice(0, 13).indexOf(ADVANCED_ENC_MAGIC) + 2); //移除高级加密标志
+      TempStr1.slice(0, TempStr1.indexOf(ADVANCED_ENC_MAGIC)) +
+      TempStr1.slice(TempStr1.indexOf(ADVANCED_ENC_MAGIC) + 2); //移除高级加密标志
 
     AdvancedMarker = true;
   }

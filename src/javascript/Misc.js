@@ -13,6 +13,7 @@ import { Base64 } from "js-base64";
 import MersenneTwister from "mersenne-twister"; //兼容性
 import CryptoJS from "crypto-js";
 import { random } from "@lukeed/csprng"; //密码学安全随机数的封装
+import { FlexibleTransferConfig } from "./CoreHandler";
 
 const SIG_DECRYPT_JP = "桜込凪雫実沢";
 const SIG_DECRYPT_CN = "玚俟玊欤瞐珏";
@@ -223,19 +224,19 @@ export function packFlexibleTransferConfig(
   key = null,
   iv = 0
 ) {
-  // 1. 安全掩码截断：防止外部传入的数值过大导致位溢出
-  const len = lengthToBoundary & 0x1ff; // 9 bits (最大 511)
-  const msg = messageID & 0xfff; // 12 bits (最大 4095)
-  const ser = SerialNumber & 0xfff; // 12 bits (最大 4095)
+  //掩码截断，防止外部传入的数值过大导致位溢出
+  const len = lengthToBoundary & 0x1ff; // 9 bits (max 511)
+  const msg = messageID & 0xfff; // 12 bits (max 4095)
+  const ser = SerialNumber & 0xfff; // 12 bits (max 4095)
   const aont = UseAONT ? 1 : 0; // 1 bit
 
-  const safeIv = iv & 0x3fff; // 14 bits (最大 16383)
+  const safeIv = iv & 0x3fff; // 14 bits (max 16383)
 
-  // 2. 避免 JS 32位位移溢出，将 48 位切割为高 24 位与低 24 位
+  //避免32位位移溢出，将48位切割为高24位与低24位
   const high24 = (len << 15) | (msg << 3) | (ser >> 9);
   const low24 = ((ser & 0x1ff) << 15) | (aont << 14) | safeIv;
 
-  // 3. 将 24 位区块映射为 Uint8Array (大端序 Big-Endian)
+  //将 24 位区块映射为 Uint8Array (大端序)
   const buffer = new Uint8Array(6);
   buffer[0] = (high24 >> 16) & 0xff;
   buffer[1] = (high24 >> 8) & 0xff;
@@ -244,12 +245,12 @@ export function packFlexibleTransferConfig(
   buffer[4] = (low24 >> 8) & 0xff;
   buffer[5] = low24 & 0xff;
 
-  // 4. CryptoJS 局部加密逻辑 (若传入了 KEY)
+  //加密逻辑(若传入了 KEY)
   if (key) {
-    // 【步骤 A】：派生 AES 的实际加密 Key -> SHA256(KEY)
+    // 派生AES加密Key SHA256(KEY)
     const hash1 = CryptoJS.SHA256(key);
 
-    // 【步骤 B】：派生实际的 IV (CTR 计数器块)
+    // 派生IV (CTR 计数器块)
     // 14bit 扩充填充到 16bit (2字节)
     const ivByte0 = (safeIv >> 8) & 0xff;
     const ivByte1 = safeIv & 0xff;
@@ -283,12 +284,12 @@ export function packFlexibleTransferConfig(
       keystream[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
     }
 
-    // 【步骤 D】：掩码异或，精准加密前 34 bits
+    // 掩码异或，加密前 34 bits
     buffer[0] ^= keystream[0];
     buffer[1] ^= keystream[1];
     buffer[2] ^= keystream[2];
     buffer[3] ^= keystream[3];
-    // 0xC0 = 11000000，精准异或高 2 位 (载荷)，保留低 6 位和第 5 字节的 8 位(合计 14bit IV) 绝对明文
+    // 0xC0 = 11000000，异或高2位，保留低6位和第5字节的8位(合计 14bit IV)绝对明文
     buffer[4] ^= keystream[4] & 0xc0;
   }
 
@@ -301,33 +302,77 @@ export function packFlexibleTransferConfig(
  * 将四个分段传输参数(合共48位，6字节)逆向拆包
  * 用于将 6 字节的 Uint8Array 还原为具体的配置参数
  *
- * @param {Uint8Array} buffer - 长度为 6 的字节数组 (需为解密后的数据)
+ * @param {Uint8Array} buffer 长度为 6 的字节数组
+ * @param {string} key  传入密钥
  */
-function unpackFlexibleTransferConfig(buffer) {
+export function unpackFlexibleTransferConfig(buffer, key = null) {
   if (buffer.length !== 6) throw new Error("Buffer must be exactly 6 bytes");
 
-  // 1. 避免 JS 32位带符号整数溢出，将 6 字节分为高 24 位与低 24 位分别合并
-  const high24 = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
-  const low24 = (buffer[3] << 16) | (buffer[4] << 8) | buffer[5];
+  const workBuffer = new Uint8Array(buffer);
 
-  // 2. 按约定的位宽与偏移量逐个提取字段
-  // [Length 9位]：提取 high24 的前 9 位 (右移 15 位，掩码 0x1FF)
-  const lengthToBoundary = (high24 >> 15) & 0x1ff;
+  // 提取明文 IV
+  const iv = ((workBuffer[4] & 0x3f) << 8) | workBuffer[5];
 
-  // [MessageID 12位]：提取 high24 的中间 12 位 (右移 3 位，掩码 0xFFF)
-  const messageID = (high24 >> 3) & 0xfff;
+  // 局部 AES 解密 (如果传入了密钥)
+  if (key) {
+    //密钥派生过程
+    const hash1 = CryptoJS.SHA256(key);
 
-  // [SerialNumber 12位]：跨越了高低 24 位的分界线，需拆解并重新缝合
-  const serHigh3 = high24 & 0x7; // 截取 high24 剩余的低 3 位
-  const serLow9 = (low24 >> 15) & 0x1ff; // 截取 low24 开头的高 9 位
-  const SerialNumber = (serHigh3 << 9) | serLow9; // 重新拼装为 12 位的完整序号
+    // 组装 CTR 计数器
+    const ivWordArr = CryptoJS.lib.WordArray.create(
+      [((iv >> 8) << 24) | ((iv & 0xff) << 16)],
+      2
+    );
+    const concatData = hash1.clone().concat(ivWordArr);
+    const actualIV = CryptoJS.SHA256(concatData);
 
-  // [UseAONT 1位]：提取 low24 中紧接其后的 1 位
+    // 截取 16 字节(128 bit)作为 AES 的计数器块
+    const counterBlock = CryptoJS.lib.WordArray.create(
+      actualIV.words.slice(0, 4),
+      16
+    );
+
+    //生成 CTR 密钥流
+    const decryptedBlock = CryptoJS.AES.encrypt(counterBlock, hash1, {
+      mode: CryptoJS.mode.ECB,
+      padding: CryptoJS.pad.NoPadding,
+    });
+
+    // 提取密钥流到 Uint8Array
+    const keystream = new Uint8Array(16);
+    const words = decryptedBlock.ciphertext.words;
+    for (let i = 0; i < 16; i++) {
+      keystream[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
+    }
+
+    //异或还原
+    workBuffer[0] ^= keystream[0];
+    workBuffer[1] ^= keystream[1];
+    workBuffer[2] ^= keystream[2];
+    workBuffer[3] ^= keystream[3];
+    // 掩码 0xC0 (11000000)，仅仅解密第 5 字节的高 2 位，不碰低 6 位
+    workBuffer[4] ^= keystream[4] & 0xc0;
+  }
+
+  //常规位拆包 (此时 workBuffer 已经是纯明文了)
+
+  // 将 6 字节拆分为高 24 位与低 24 位
+  const high24 = (workBuffer[0] << 16) | (workBuffer[1] << 8) | workBuffer[2];
+  const low24 = (workBuffer[3] << 16) | (workBuffer[4] << 8) | workBuffer[5];
+
+  //按约定的位宽与偏移量逐个提取字段
+  const lengthToBoundary = (high24 >> 15) & 0x1ff; // 9位
+  const messageID = (high24 >> 3) & 0xfff; // 12位
+
+  //缝合跨越边界的 SerialNumber
+  const serHigh3 = high24 & 0x7;
+  const serLow9 = (low24 >> 15) & 0x1ff;
+  const SerialNumber = (serHigh3 << 9) | serLow9;
+
+  //提取布尔标志
   const UseAONT = ((low24 >> 14) & 0x1) === 1;
 
-  // [IV 14位]：提取 low24 最后剩余的 14 位 (掩码 0x3FFF)
-  const iv = low24 & 0x3fff;
-
+  // IV 在第一步已经提取过了，直接返回
   return { lengthToBoundary, messageID, SerialNumber, UseAONT, iv };
 }
 
@@ -497,6 +542,89 @@ export function distributeFlexibleTransfer(
   }
 
   return chunks;
+}
+
+/**
+ * 工具函数
+ * 动态/串行插入数据标志，支持任意标志缺省，精确计算剩余距离
+ *
+ * @param {string} originalStr 原始长字符串
+ * @param {string|null|undefined} sub1 第一个数据标志 (如果不插则传 null/undefined/空字符串)
+ * @param {function|null|undefined} sub2EncryptProvider 接收距离并返回 sub2 的回调函数 (如果不插则传 null/undefined)
+ * @param {FlexibleTransferConfig} FlexibleTransferConfigObj 接收灵活传输参数。
+ * @param {string} key 接收加密灵活传输参数所需要的密钥，默认是加密的主密钥
+ * @returns {string} 最终拼接后的字符串
+ */
+export function insertEncryptMarks(
+  originalStr,
+  sub1,
+  sub2EncryptProvider,
+  FlexibleTransferConfigObj,
+  key
+) {
+  const L = originalStr.length;
+
+  // 状态判定：检查当前需要插入哪些标志
+  const hasSub1 = typeof sub1 === "string" && sub1.length > 0;
+  const hasSub2 = typeof sub2EncryptProvider === "function";
+
+  // ==== 场景 0: 两个标志都不插 ====
+  if (!hasSub1 && !hasSub2) {
+    return originalStr;
+  }
+
+  // ==== 场景 1: 只插入 sub1 ====
+  if (hasSub1 && !hasSub2) {
+    const i1 = Math.floor(Math.random() * (L + 1));
+    return originalStr.slice(0, i1) + sub1 + originalStr.slice(i1);
+  }
+
+  // ==== 场景 2: 只插入 sub2 ====
+  if (!hasSub1 && hasSub2) {
+    // 此时不存在 sub1 干扰，直接在原字符串 L+1 个缝隙中选一个
+    const i2 = Math.floor(Math.random() * (L + 1));
+    // 距离就是原字符串剩下的字符数
+    const distanceToEnd = L - i2;
+    // 生成 sub2 并插入
+    const sub2 = sub2EncryptProvider(
+      distanceToEnd,
+      FlexibleTransferConfigObj.MessengeID,
+      FlexibleTransferConfigObj.RecursionSeqNum,
+      FlexibleTransferConfigObj.UseAONT,
+      key,
+      GetRandomIndex(16384)
+    );
+    return originalStr.slice(0, i2) + sub2 + originalStr.slice(i2);
+  }
+
+  // ==== 场景 3: 两个标志都插入 (全量逻辑) ====
+  if (hasSub1 && hasSub2) {
+    const l1 = sub1.length;
+
+    // Step 1: 确定并插入 sub1
+    const i1 = Math.floor(Math.random() * (L + 1));
+    const strAfterSub1 =
+      originalStr.slice(0, i1) + sub1 + originalStr.slice(i1);
+
+    // Step 2: 决定 sub2 虚拟位置 & 计算距离
+    const r = Math.floor(Math.random() * (L + 2));
+    let distanceToEnd = 0;
+    let i2 = 0;
+
+    if (r <= i1) {
+      // sub2 在前：身后距离 = 原字串剩余 + sub1全长
+      distanceToEnd = L - r + l1;
+      i2 = r; // 在 strAfterSub1 中的真实插入位置
+    } else {
+      // sub2 在后：身后距离 = 仅原字串剩余
+      distanceToEnd = L - r + 1;
+      i2 = r + l1 - 1; // 需要跳过 sub1 的长度
+    }
+
+    // Step 3: 生成并插入 sub2
+    const sub2 = sub2EncryptProvider(distanceToEnd);
+    return strAfterSub1.slice(0, i2) + sub2 + strAfterSub1.slice(i2);
+  }
 }
 
 export function preCheck_OLD(inp) {
