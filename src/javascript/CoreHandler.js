@@ -242,7 +242,6 @@ export function Enc(
 
   //压缩
   OriginalData = Compress(TempArray);
-  //加密
 
   try {
     AdvancedEncObj = new AdvancedEncConfig(
@@ -268,7 +267,7 @@ export function Enc(
     //遇到错误即AdvancedEncObj是一个null或者某个不可读取属性的非法值，自动缺省
     AdvancedEncObj = new AdvancedEncConfig();
   }
-
+  //加密
   OriginalData = Encrypt(OriginalData, key, AdvancedEncObj);
 
   if (AdvancedEncObj.Enable) {
@@ -308,7 +307,8 @@ export function Enc(
   if (AdvancedEncObj.Enable) {
     if (
       AdvancedEncObj.FlexibleTransfer &&
-      AdvancedEncObj.FlexibleTransfer.Enable
+      AdvancedEncObj.FlexibleTransfer.Enable &&
+      AdvancedEncObj.FlexibleTransfer.isRecursion
     ) {
       //高级加密和灵活传输同时启用
       OriginStr = insertEncryptMarks(
@@ -331,7 +331,8 @@ export function Enc(
   } else {
     if (
       AdvancedEncObj.FlexibleTransfer &&
-      AdvancedEncObj.FlexibleTransfer.Enable
+      AdvancedEncObj.FlexibleTransfer.Enable &&
+      AdvancedEncObj.FlexibleTransfer.isRecursion
     ) {
       //只启用灵活传输
       OriginStr = insertEncryptMarks(
