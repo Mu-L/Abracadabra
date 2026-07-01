@@ -13,6 +13,7 @@
 import { expect, test, bench } from "vitest";
 
 import { Abracadabra } from "./main";
+import { FlexibleTransferConfig } from "./CoreHandler";
 
 const Rand = Math.random() * 100000000000;
 const TestString = Rand.toString();
@@ -351,5 +352,35 @@ test("高级加密测试", { timeout: 100000 }, () => {
     TestTemp = Abra.Output();
 
     expect(TestTemp).toStrictEqual(data);
+    /*const Abra2 = new Abracadabra("TEXT", "TEXT");
+
+    Abra2.WenyanInput(
+      "你好，这是一个分段加密测试，一个汉字有三个字节，那么十个汉字就是三十个字节，一百个汉字就有三百个字节，其实是比较长的，不过，作为测试数据来说，现在这么长的一个字符串已经足够长了。",
+      "ENCRYPT",
+      "ABRACADABRA",
+      {
+        RandomIndex: 100,
+      },
+      {
+        Enable: true,
+        UseStrongIV: false,
+        UseHMAC: false,
+        UsePBKDF2: false,
+        UseTOTP: false,
+        TOTPBaseKey: "ABRACADABRA",
+        TOTPEpoch: 1767928233717,
+        TOTPTimeStep: 0,
+        FlexibleTransfer: new FlexibleTransferConfig(
+          true,
+          false,
+          -1,
+          [100, 100]
+        ),
+      }
+    );
+
+    TestTemp = Abra2.Output();
+
+    console.log(TestTemp);*/
   });
 });

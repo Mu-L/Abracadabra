@@ -179,7 +179,7 @@ export class Abracadabra {
 
   /**
    * 魔曰 获取加密/解密后的结果
-   * @returns {string | Uint8Array} 根据此前指定的输出类型，可能是字符串或字节数组
+   * @returns {string | Uint8Array} 根据此前指定的输出类型，可能是字符串或字节数组；或者分段传输输出的多个结果
    */
-  Output(): string | Uint8Array;
+  Output(): string | Uint8Array | string[] | Uint8Array[];
 }

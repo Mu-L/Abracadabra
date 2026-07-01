@@ -12,8 +12,8 @@
 import { Base64 } from "js-base64";
 import MersenneTwister from "mersenne-twister"; //兼容性
 import CryptoJS from "crypto-js";
-import { random } from "@lukeed/csprng"; //密码学安全随机数的封装
-import { FlexibleTransferConfig } from "./CoreHandler";
+import { random } from "./CSPRNGHelper"; //密码学安全随机数的封装
+import { FlexibleTransferConfig, FLEXIBLE_TRANSFER_MAGIC } from "./CoreHandler";
 
 const SIG_DECRYPT_JP = "桜込凪雫実沢";
 const SIG_DECRYPT_CN = "玚俟玊欤瞐珏";
@@ -80,8 +80,18 @@ export function GetRandomIndex(length) {
   // 取随机数
   let Rand;
 
+  Rand = Math.floor(MT.random() * length);
+
+  return Rand;
+}
+
+export function GetSecureRandomIndex(length) {
+  // 取随机数
+  let Rand;
+  Rand = Math.floor(MT.random() * length);
+
   try {
-    Rand = Math.floor((random(1).at(0) / 256) * length);
+    Rand = Math.floor(random() * length);
   } catch (err) {
     Rand = Math.floor(MT.random() * length);
   }
@@ -237,13 +247,13 @@ export function packFlexibleTransferConfig(
   const low24 = ((ser & 0x1ff) << 15) | (aont << 14) | safeIv;
 
   //将 24 位区块映射为 Uint8Array (大端序)
-  const buffer = new Uint8Array(6);
-  buffer[0] = (high24 >> 16) & 0xff;
-  buffer[1] = (high24 >> 8) & 0xff;
-  buffer[2] = high24 & 0xff;
-  buffer[3] = (low24 >> 16) & 0xff;
-  buffer[4] = (low24 >> 8) & 0xff;
-  buffer[5] = low24 & 0xff;
+  const ResultBuffer = new Uint8Array(6);
+  ResultBuffer[0] = (high24 >> 16) & 0xff;
+  ResultBuffer[1] = (high24 >> 8) & 0xff;
+  ResultBuffer[2] = high24 & 0xff;
+  ResultBuffer[3] = (low24 >> 16) & 0xff;
+  ResultBuffer[4] = (low24 >> 8) & 0xff;
+  ResultBuffer[5] = low24 & 0xff;
 
   //加密逻辑(若传入了 KEY)
   if (key) {
@@ -285,15 +295,15 @@ export function packFlexibleTransferConfig(
     }
 
     // 掩码异或，加密前 34 bits
-    buffer[0] ^= keystream[0];
-    buffer[1] ^= keystream[1];
-    buffer[2] ^= keystream[2];
-    buffer[3] ^= keystream[3];
+    ResultBuffer[0] ^= keystream[0];
+    ResultBuffer[1] ^= keystream[1];
+    ResultBuffer[2] ^= keystream[2];
+    ResultBuffer[3] ^= keystream[3];
     // 0xC0 = 11000000，异或高2位，保留低6位和第5字节的8位(合计 14bit IV)绝对明文
-    buffer[4] ^= keystream[4] & 0xc0;
+    ResultBuffer[4] ^= keystream[4] & 0xc0;
   }
 
-  return buffer;
+  return ResultBuffer;
 }
 
 /**
@@ -586,14 +596,18 @@ export function insertEncryptMarks(
     // 距离就是原字符串剩下的字符数
     const distanceToEnd = L - i2;
     // 生成 sub2 并插入
-    const sub2 = sub2EncryptProvider(
-      distanceToEnd,
-      FlexibleTransferConfigObj.MessengeID,
-      FlexibleTransferConfigObj.RecursionSeqNum,
-      FlexibleTransferConfigObj.UseAONT,
-      key,
-      GetRandomIndex(16384)
-    );
+    const sub2 =
+      FLEXIBLE_TRANSFER_MAGIC +
+      Base64.fromUint8Array(
+        sub2EncryptProvider(
+          distanceToEnd,
+          FlexibleTransferConfigObj.MessengeID,
+          FlexibleTransferConfigObj.RecursionSeqNum,
+          FlexibleTransferConfigObj.UseAONT,
+          key,
+          GetRandomIndex(16384)
+        )
+      );
     return originalStr.slice(0, i2) + sub2 + originalStr.slice(i2);
   }
 
@@ -622,7 +636,18 @@ export function insertEncryptMarks(
     }
 
     // Step 3: 生成并插入 sub2
-    const sub2 = sub2EncryptProvider(distanceToEnd);
+    const sub2 =
+      FLEXIBLE_TRANSFER_MAGIC +
+      Base64.fromUint8Array(
+        sub2EncryptProvider(
+          distanceToEnd,
+          FlexibleTransferConfigObj.MessengeID,
+          FlexibleTransferConfigObj.RecursionSeqNum,
+          FlexibleTransferConfigObj.UseAONT,
+          key,
+          GetSecureRandomIndex(16384)
+        )
+      );
     return strAfterSub1.slice(0, i2) + sub2 + strAfterSub1.slice(i2);
   }
 }

@@ -16,6 +16,7 @@ import {
   wordArrayToUint8Array,
   Uint8ArrayTostring,
   GetRandomIndex,
+  GetSecureRandomIndex,
   getStep,
   i2osp,
 } from "./Misc.js";
@@ -307,8 +308,8 @@ export function Encrypt(
   let TempArray = null;
   if (!AdvancedEncObj.Enable) {
     //执行非高级安全模式的加密
-    RandomBytes.push(GetRandomIndex(256));
-    RandomBytes.push(GetRandomIndex(256));
+    RandomBytes.push(GetSecureRandomIndex(256));
+    RandomBytes.push(GetSecureRandomIndex(256));
 
     OriginalData = AES_256_CTR_E(OriginalData, key, RandomBytes); //AES-256-CTR加密
 
@@ -319,11 +320,11 @@ export function Encrypt(
     //执行高级安全模式的加密
     if (AdvancedEncObj.UseStrongIV) {
       for (let i = 0; i < 16; i++) {
-        RandomBytes.push(GetRandomIndex(256)); //获取十六个随机数字作为完整的IV
+        RandomBytes.push(GetSecureRandomIndex(256)); //获取十六个随机数字作为完整的IV
       }
     } else {
-      RandomBytes.push(GetRandomIndex(256));
-      RandomBytes.push(GetRandomIndex(256));
+      RandomBytes.push(GetSecureRandomIndex(256));
+      RandomBytes.push(GetSecureRandomIndex(256));
     }
 
     OriginalData = AES_256_CTR_HMAC_SHA256_E(
@@ -446,7 +447,7 @@ export function EnAONT(Data) {
 
   for (let i = 0; i < 32; i++) {
     //获取随机种子
-    Seed[i] = GetRandomIndex(256);
+    Seed[i] = GetSecureRandomIndex(256);
   }
 
   //生成掩码，使用mgf1算法，配合SHA256

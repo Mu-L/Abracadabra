@@ -124,9 +124,9 @@ export class AdvancedEncConfig {
 }
 
 //标头，用于自动识别高级加密数据，理论上需要附加正常加密/解密时绝不可能在开头出现的Base64编码范围内字符
-const ADVANCED_ENC_MAGIC = "+=";
+export const ADVANCED_ENC_MAGIC = "+=";
 //标头，用于自动识别灵活传输数据
-const FLEXIBLE_TRANSFER_MAGIC = "=/";
+export const FLEXIBLE_TRANSFER_MAGIC = "=/";
 
 // =/+= +=/=
 export class CallbackObj {
@@ -207,12 +207,14 @@ export function Enc(
     }
 
     //开始递归，初始化递归标志
-    AdvancedEncObj.FlexibleTransfer.isRecursion = true;
-    AdvancedEncObj.FlexibleTransfer.RecursionSeqNum = 0;
+    let RecursiveAdvancedEncObj = AdvancedEncObj;
+    RecursiveAdvancedEncObj.FlexibleTransfer.isRecursion = true;
+    RecursiveAdvancedEncObj.FlexibleTransfer.RecursionSeqNum = 0;
 
     if (AdvancedEncObj.FlexibleTransfer.MessengeID == -1) {
       //随机消息ID
-      AdvancedEncObj.FlexibleTransfer.MessengeID = GetRandomIndex(4096);
+      RecursiveAdvancedEncObj.FlexibleTransfer.MessengeID =
+        GetRandomIndex(4096);
     }
 
     let ResultArray = new Array(SlicedDataArray.length);
@@ -221,10 +223,10 @@ export function Enc(
         { output: SlicedDataArray[i] },
         key,
         WenyanConfigObj,
-        AdvancedEncObj,
+        RecursiveAdvancedEncObj,
         callback
       );
-      AdvancedEncObj.FlexibleTransfer.RecursionSeqNum++;
+      RecursiveAdvancedEncObj.FlexibleTransfer.RecursionSeqNum++;
     }
     return ResultArray;
   }
@@ -261,7 +263,11 @@ export function Enc(
       AdvancedEncObj.TOTPBaseKey !== null &&
       AdvancedEncObj.TOTPBaseKey !== undefined
         ? AdvancedEncObj.TOTPBaseKey
-        : key
+        : key,
+      AdvancedEncObj.FlexibleTransfer !== null &&
+      AdvancedEncObj.FlexibleTransfer !== undefined
+        ? AdvancedEncObj.FlexibleTransfer
+        : new FlexibleTransferConfig()
     );
   } catch (err) {
     //遇到错误即AdvancedEncObj是一个null或者某个不可读取属性的非法值，自动缺省

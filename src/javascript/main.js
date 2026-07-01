@@ -225,9 +225,10 @@ export class Abracadabra {
       throw "Null Output, please input some data at first.";
     }
     if (typeof this.#res == "object") {
-      if (this.#output == Abracadabra.TEXT) {
+      if (this.#output == Abracadabra.TEXT && !Array.isArray(this.#res)) {
+        //解密结果
         return this.#res.output; //要输出字符串，那么直接输出字符串，解密总会有字符串
-      } else {
+      } else if (!Array.isArray(this.#res)) {
         //如果要输出UINT8
         if (this.#res.output_B != null) {
           //如果有现成的可用，直接输出现成的。
@@ -238,6 +239,28 @@ export class Abracadabra {
           const encodedData = encoder.encode(this.#res.output);
 
           return encodedData;
+        }
+      } else {
+        //分段输出的加密或者解密结果。
+        if (this.#output == Abracadabra.TEXT) {
+          if (typeof this.#res[0] === "string") {
+            return this.#res;
+          } else {
+            // 简洁写法：实例化一次，循环解码
+            const decoder = new TextDecoder();
+            const strArr = this.#res.map((u8a) => decoder.decode(u8a));
+            return strArr;
+          }
+        } else {
+          //输出Uint8
+          if (typeof this.#res[0] === "string") {
+            // 简洁写法：实例化一次，循环解码
+            const decoder = new TextEncoder();
+            const U8Arr = this.#res.map((str) => decoder.encode(str));
+            return U8Arr;
+          } else {
+            return this.#res;
+          }
         }
       }
     } else if (typeof this.#res == "string") {
