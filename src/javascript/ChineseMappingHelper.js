@@ -17,10 +17,16 @@ import {
   AddPadding,
   shuffle,
   ValueNoise1D,
+  unpackFlexibleTransferConfig,
 } from "./Misc.js";
 import { RoundObfusOLD, RoundObfus } from "./RoundObfusHelper.js";
-import { CallbackObj } from "./CoreHandler.js";
+import {
+  CallbackObj,
+  FlexibleTransferDataObj,
+  FLEXIBLE_TRANSFER_MAGIC,
+} from "./CoreHandler.js";
 import * as OpenCC from "opencc-js";
+import { Base64 } from "js-base64";
 
 export class WenyanSimulator {
   /**
@@ -959,9 +965,10 @@ export class WenyanSimulator {
    * 汉字逆映射总流程函数(解密)
    *
    * @param{string}OriginStr 需要逆映射的字符串(一串汉字)
-   * @returns{string} 返回Base64字符串(逆映射结果)
+   * @param{string}key 明文密钥，用于解密灵活传输标头
+   * @returns{string|FlexibleTransferDataObj[]} 返回Base64字符串(逆映射结果)
    */
-  deMap(OriginStr) {
+  deMap(OriginStr, key) {
     let TempStr1 = "",
       TempStrz = "";
     let temp = "",
@@ -1017,18 +1024,143 @@ export class WenyanSimulator {
     }
     size = TempStrz.length;
     OriginStr = TempStrz;
-    this.RoundKey(); //开始轮转逆映射字符，还原Base64字符串
+    //灵活传输介入所需要的暂存
+    let FlexibleTransferMarkerDecCounter = -1;
+    let FlexibleTransferDecCounter = -1;
+    let FlexibleTransferDecCounterTarget = -1;
+    let FlexibleMarkerTemp = "";
+    let FlexibleTransferDataArray = [];
+    //开始轮转逆映射字符，还原Base64字符串，在一切开始前先转动一次转轮
+    this.RoundKey();
     for (let i = 0; i < size; ) {
       temp = OriginStr[i];
 
-      findtemp = this.findOriginText(temp); //查找第一个字符的原文
+      findtemp = this.findOriginText(temp); //查找字符的原文
       if (findtemp == this.NULL_STR) {
         /* v8 ignore next 2 */
-        throw "Bad Input. Try force encrypt if intended.";
+        throw "Bad Input.";
       }
-      TempStr1 = TempStr1 + findtemp; //把找到的原文增加到字符串上
+
+      //>>>>>>>>>>>>>>>>↓
+      //这里是灵活传输的介入，在每一轮转步骤的字符串追加前和追加后都要执行拦截操作
+
+      if (FlexibleTransferMarkerDecCounter >= 8) {
+        //这个判断用来拦截灵活传输标头的末尾，灵活传输到这里，是第九次循环。针对标头的判断在追加字符串之后。
+        //在此处提前拦截可避免复杂一些的字符串截取操作。
+        FlexibleMarkerTemp = TempStr1.slice(-8); //把标头截取下来
+        TempStr1 = TempStr1.slice(0, -8); //把标头从主字符串上丢掉
+
+        let RawDataObj = unpackFlexibleTransferConfig(
+          Base64.toUint8Array(FlexibleMarkerTemp),
+          key
+        );
+        FlexibleTransferDecCounterTarget = RawDataObj.lengthToBoundary; //确定当前位置到本段边界的距离。
+        FlexibleTransferDecCounter = 0; //把Counter设置为0;
+        FlexibleTransferMarkerDecCounter = -1; //重置标头计数器
+      }
+
+      if (
+        FlexibleTransferDecCounter == FlexibleTransferDecCounterTarget &&
+        FlexibleTransferDecCounter != -1
+      ) {
+        //刚好位于本段末尾；
+        //TempStr1 就是本段的全部Base64密文数据，可能含有高级加密标头，但是这不由拦截器考虑。
+
+        let FlexibleMarkerData = unpackFlexibleTransferConfig(
+          Base64.toUint8Array(FlexibleMarkerTemp),
+          key
+        ); //把灵活传输标头解开
+
+        //把本段灵活传输的数据给加入到数组里
+        FlexibleTransferDataArray.push(
+          new FlexibleTransferDataObj(
+            FlexibleMarkerData.UseAONT,
+            FlexibleMarkerData.messageID,
+            TempStr1,
+            FlexibleMarkerData.SerialNumber
+          )
+        );
+
+        //重置所有暂存变量
+        FlexibleTransferMarkerDecCounter = -1;
+        FlexibleTransferDecCounter = -1;
+        FlexibleTransferDecCounterTarget = -1;
+        FlexibleMarkerTemp = "";
+
+        this.RoundObufsHelper.RoundReset(); //重置当前转轮。
+        TempStr1 = ""; //重置暂存的字符串
+        this.RoundKey(); //轮换一次转轮
+        continue;
+        //开始下一次循环，下一次循环将会再截取新的标头和数据。
+      }
+      //>>>>>>>>>>>>>>>>↑
+
+      //核心操作，追加字符串
+      TempStr1 = TempStr1 + findtemp; //把找到的原文追加到字符串上
+
+      //>>>>>>>>>>>>>>>>↓
+      if (
+        FlexibleTransferMarkerDecCounter > -1 &&
+        FlexibleTransferMarkerDecCounter < 8
+      ) {
+        FlexibleTransferMarkerDecCounter++; //后续八个高级加密标头字符，在解混淆的时候递增计数器
+      }
+
+      if (TempStr1.endsWith(FLEXIBLE_TRANSFER_MAGIC)) {
+        //识别到高级加密标头，开始介入
+        if (FlexibleTransferMarkerDecCounter > -1) {
+          throw "Bad Input."; //连续两次以上检测到高级加密标头，是不可能的情况，直接丢出错误。
+        }
+        FlexibleTransferMarkerDecCounter++;
+        //首次识别到标头，此时只解混淆到 =/，后续有八个字符。
+        TempStr1 = TempStr1.slice(0, -2); //把标头丢掉
+      }
+
+      if (FlexibleTransferDecCounter > -1) {
+        //灵活传输，此时位于标头到段落边界之间的位置
+        if (FlexibleTransferDecCounter < FlexibleTransferDecCounterTarget) {
+          //如果没解密到本段到末尾，那么继续解密
+          FlexibleTransferDecCounter++;
+        }
+      }
+      //>>>>>>>>>>>>>>>>↑
       this.RoundKey(); //轮换密钥
       i++;
+      //>>>>>>>>>>>>>>>>↓
+      //分段传输在循环到最后的时候，需要执行一次收尾判断。判断体和前面的一样。
+      if (i == size && FlexibleTransferDecCounter != -1) {
+        if (FlexibleTransferDecCounter == FlexibleTransferDecCounterTarget) {
+          //刚好位于本段末尾；
+          //TempStr1 就是本段的全部Base64密文数据，可能含有高级加密标头，但是这不由拦截器考虑。
+
+          let FlexibleMarkerData = unpackFlexibleTransferConfig(
+            Base64.toUint8Array(FlexibleMarkerTemp),
+            key
+          ); //把灵活传输标头解开
+
+          //把本段灵活传输的数据给加入到数组里
+          FlexibleTransferDataArray.push(
+            new FlexibleTransferDataObj(
+              FlexibleMarkerData.UseAONT,
+              FlexibleMarkerData.messageID,
+              TempStr1,
+              FlexibleMarkerData.SerialNumber
+            )
+          );
+
+          //重置所有暂存变量
+          FlexibleTransferMarkerDecCounter = -1;
+          FlexibleTransferDecCounter = -1;
+          FlexibleTransferDecCounterTarget = -1;
+          FlexibleMarkerTemp = "";
+
+          this.RoundObufsHelper.RoundReset(); //重置当前转轮。
+          TempStr1 = ""; //重置暂存的字符串
+          this.RoundKey(); //轮换一次转轮
+          continue;
+        }
+      }
+      //>>>>>>>>>>>>>>>>↑
       try {
         if (this.callback != null)
           this.callback(new CallbackObj("DEC_BASE64", TempStr1));
@@ -1036,8 +1168,13 @@ export class WenyanSimulator {
         // continue regardless of error
       }
     }
-    TempStr1 = AddPadding(TempStr1); //轮转完成之后，为Base64字符串添加Padding
-    return TempStr1;
+
+    if (FlexibleTransferDataArray.length == 0) {
+      TempStr1 = TempStr1; //轮转完成之后，为Base64字符串添加Padding
+      return TempStr1;
+    } else {
+      return FlexibleTransferDataArray;
+    }
   }
 }
 

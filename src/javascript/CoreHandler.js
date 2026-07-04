@@ -12,7 +12,7 @@
 import { Base64 } from "js-base64";
 import { OldMapper, WenyanSimulator } from "./ChineseMappingHelper";
 import { Compress, Decompress } from "./CompressionHelper.js";
-import { Decrypt, EnAONT, Encrypt } from "./EncryptHelper";
+import { DeAONT, Decrypt, EnAONT, Encrypt } from "./EncryptHelper";
 
 import {
   Uint8ArrayTostring,
@@ -27,6 +27,8 @@ import {
   packFlexibleTransferConfig,
   unpackFlexibleTransferConfig,
   insertEncryptMarks,
+  AddPadding,
+  stringToUint8Array,
 } from "./Misc.js";
 
 export class WenyanConfig {
@@ -62,18 +64,18 @@ export class FlexibleTransferConfig {
    *
    * @param{bool}Enable 指定是否启用灵活传输功能，默认 false/不开启
    * @param{bool}UseAONT 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢
-   * @param{number}MessengeID  指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)
+   * @param{number}MessageID  指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)
    * @param{[number, number]}RandomPragraphing 指定分段加密每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
    */
   constructor(
     Enable = false,
     UseAONT = true,
-    MessengeID = -1,
+    MessageID = -1,
     RandomPragraphing = [20, 80]
   ) {
     this.Enable = Enable;
     this.UseAONT = UseAONT;
-    this.MessengeID = MessengeID;
+    this.MessageID = MessageID;
     this.RandomPragraphing = RandomPragraphing;
     if (
       RandomPragraphing[0] < 10 ||
@@ -119,16 +121,74 @@ export class AdvancedEncConfig {
     this.TOTPTimeStep = TOTPTimeStep;
     this.TOTPEpoch = TOTPEpoch;
     this.TOTPBaseKey = TOTPBaseKey;
-    this.FlexibleTransfer = FlexibleTransfer;
+    this.FlexibleTransfer = FlexibleTransfer; /*new FlexibleTransferConfig(
+      FlexibleTransfer.Enable !== undefined ? FlexibleTransfer.Enable : false,
+      FlexibleTransfer.UseAONT !== undefined ? FlexibleTransfer.UseAONT : true,
+      FlexibleTransfer.MessageID !== undefined
+        ? FlexibleTransfer.MessageID
+        : -1,
+      FlexibleTransfer.RandomPragraphing !== undefined &&
+      Array.isArray(FlexibleTransfer.RandomPragraphing)
+        ? FlexibleTransfer.RandomPragraphing
+        : [20, 80]
+    );*/
+  }
+}
+
+export class FlexibleTransferDataObj {
+  /**
+   * 魔曰 灵活传输数据对象
+   *
+   * 在解密时候，如果检测到当前密文使用了灵活传输，则介入并利用该对象封装数据和必须的参数。
+   *
+   * @param{bool}UseAONT 是否启用全有或全无转换(AONT)
+   * @param{number}MessageID 消息ID
+   * @param{string}DataInBase64 Base64编码后的加密Data
+   * @param{string}SerialNumber 消息序号
+   */
+  constructor(UseAONT, MessageID, DataInBase64, SerialNumber) {
+    this.UseAONT = UseAONT;
+    this.MessageID = MessageID;
+    this.SerialNumber = SerialNumber;
+    this.DataInBase64 = DataInBase64;
+  }
+}
+
+export class EncResultDataObj {
+  /**
+   * 魔曰 加密结果数据对象
+   *
+   * 加密的数据结果
+   *
+   * @param{string}StringData 字符串Data
+   * @param{Uint8Array}BufferData 字节Data
+   */
+  constructor(StringData, BufferData) {
+    this.StringData = StringData;
+    this.BufferData = BufferData;
+  }
+}
+
+export class DecResultDataObj {
+  /**
+   * 魔曰 解密结果数据对象
+   *
+   * 解密的数据结果
+   *
+   * @param{string}StringData 字符串Data
+   * @param{Uint8Array}BufferData 字节Data
+   */
+  constructor(StringData, BufferData) {
+    this.StringData = StringData;
+    this.BufferData = BufferData;
   }
 }
 
 //标头，用于自动识别高级加密数据，理论上需要附加正常加密/解密时绝不可能在开头出现的Base64编码范围内字符
 export const ADVANCED_ENC_MAGIC = "+=";
 //标头，用于自动识别灵活传输数据
-export const FLEXIBLE_TRANSFER_MAGIC = "=/";
+export const FLEXIBLE_TRANSFER_MAGIC = "/=";
 
-// =/+= +=/=
 export class CallbackObj {
   /**
    * 魔曰 Debug 回调位点对象
@@ -184,9 +244,27 @@ export function Enc(
      * 高级加密标头和灵活加密标头将一次性同时插入，下一版本中，高级加密标头允许插入到全段文本的任意位置，由转轮函数执行拦截和提取。
      */
 
+    AdvancedEncObj.FlexibleTransfer = new FlexibleTransferConfig(
+      AdvancedEncObj.FlexibleTransfer.Enable !== undefined
+        ? AdvancedEncObj.FlexibleTransfer.Enable
+        : false,
+      AdvancedEncObj.FlexibleTransfer.UseAONT !== undefined
+        ? AdvancedEncObj.FlexibleTransfer.UseAONT
+        : true,
+      AdvancedEncObj.FlexibleTransfer.MessageID !== undefined
+        ? AdvancedEncObj.FlexibleTransfer.MessageID
+        : -1,
+      AdvancedEncObj.FlexibleTransfer.RandomPragraphing !== undefined &&
+      Array.isArray(AdvancedEncObj.FlexibleTransfer.RandomPragraphing)
+        ? AdvancedEncObj.FlexibleTransfer.RandomPragraphing
+        : [20, 80]
+    ); //重新组装一个新对象，以自动缺省未传入值
+
     // 开始执行分段，分段采用余弦插值噪声
     let PayloadLengthArray = distributeFlexibleTransfer(
-      OriginalData.byteLength,
+      AdvancedEncObj.FlexibleTransfer.UseAONT
+        ? OriginalData.byteLength + 32
+        : OriginalData.byteLength,
       AdvancedEncObj.FlexibleTransfer.RandomPragraphing[0],
       AdvancedEncObj.FlexibleTransfer.RandomPragraphing[1]
     );
@@ -211,10 +289,9 @@ export function Enc(
     RecursiveAdvancedEncObj.FlexibleTransfer.isRecursion = true;
     RecursiveAdvancedEncObj.FlexibleTransfer.RecursionSeqNum = 0;
 
-    if (AdvancedEncObj.FlexibleTransfer.MessengeID == -1) {
+    if (AdvancedEncObj.FlexibleTransfer.MessageID == -1) {
       //随机消息ID
-      RecursiveAdvancedEncObj.FlexibleTransfer.MessengeID =
-        GetRandomIndex(4096);
+      RecursiveAdvancedEncObj.FlexibleTransfer.MessageID = GetRandomIndex(4096);
     }
 
     let ResultArray = new Array(SlicedDataArray.length);
@@ -376,8 +453,8 @@ export function Enc(
       ? WenyanConfigObj.Traditional
       : false
   );
-
-  return Res;
+  let Encoder = new TextEncoder();
+  return new EncResultDataObj(Res, Encoder.encode(Res));
 }
 
 export function Dec(
@@ -392,10 +469,112 @@ export function Dec(
   let AdvancedEncObj = null;
   let AdvancedMarker = false;
   let WenyanSimulatorObj = new WenyanSimulator(key, callback);
-  let OriginStr = Uint8ArrayTostring(input.output);
+  let OriginStr;
+  let TempStr1;
+
+  if (!(input instanceof FlexibleTransferDataObj)) {
+    OriginStr = Uint8ArrayTostring(input.output);
+  } else {
+    OriginStr = input.DataInBase64;
+  }
 
   //解映射
-  let TempStr1 = WenyanSimulatorObj.deMap(OriginStr);
+  if (!(input instanceof FlexibleTransferDataObj)) {
+    TempStr1 = WenyanSimulatorObj.deMap(OriginStr, key);
+  } else {
+    TempStr1 = OriginStr;
+  }
+
+  if (Array.isArray(TempStr1)) {
+    //如果返回了一个数组，即为识别到启用了分段传输。
+    //开始递归解密。先分类，再排序，再解密。
+
+    let ResultArray = new Array([]);
+
+    //开始分类，针对不同的消息ID。
+    ResultArray[0].push(TempStr1[0]);
+
+    let FoundMatch = false;
+    for (let i = 1; i < TempStr1.length; i++) {
+      for (let a = 0; a < ResultArray.length; a++) {
+        if (TempStr1[i].MessageID == ResultArray[a][0].MessageID) {
+          //如果发现了匹配行
+          ResultArray[a].push(TempStr1[i]);
+          FoundMatch = true;
+          break;
+        }
+      }
+      if (!FoundMatch) {
+        //没发现匹配项就新建一行
+        FoundMatch = false;
+        ResultArray.push(new Array(TempStr1[i]));
+      }
+      FoundMatch = false;
+    }
+
+    //分类完成，紧接着排序。
+
+    // 遍历每一行 (row)
+    ResultArray.forEach((row) => {
+      // 对当前行按照 SerialNumber 从小到大排序
+      row.sort((a, b) => a.SerialNumber - b.SerialNumber);
+    });
+
+    //对每一行的每个元素执行递归解密，然后执行拼接和AONT。
+    for (let i = 0; i < ResultArray.length; i++) {
+      let AONT = false;
+      for (let a = 0; a < ResultArray[i].length; a++) {
+        if (ResultArray[i][a].UseAONT) {
+          AONT = true;
+        }
+        ResultArray[i][a] = Dec(
+          ResultArray[i][a],
+          key,
+          TOTPEpoch,
+          TOTPBaseKey,
+          callback
+        ).BufferData;
+      }
+      if (AONT) {
+        ResultArray[i].UseAONT = true;
+      }
+    }
+    //拼接每一行的数据
+    let MergedResultArray = ResultArray.map((row) => {
+      //计算当前行所有 Uint8Array 的总长度
+      const totalLength = row.reduce((sum, arr) => sum + arr.length, 0);
+
+      //创建一个拥有该总长度的全新 Uint8Array
+      const mergedArray = new Uint8Array(totalLength);
+
+      //遍历当前行的 Uint8Array，依次塞入新数组中
+      let offset = 0;
+      for (let i = 0; i < row.length; i++) {
+        mergedArray.set(row[i], offset); // 在指定的偏移量位置写入数据
+        offset += row[i].length; // 更新偏移量
+      }
+
+      if (row.UseAONT) {
+        mergedArray.UseAONT = true;
+      }
+
+      // 返回拼接好的 Uint8Array
+      return mergedArray;
+    });
+
+    for (let i = 0; i < MergedResultArray.length; i++) {
+      //开始执行ANOT，以及最终处理
+      if (MergedResultArray[i].UseAONT) {
+        MergedResultArray[i] = DeAONT(MergedResultArray[i]);
+      }
+      MergedResultArray[i] = new DecResultDataObj(
+        Uint8ArrayTostring(MergedResultArray[i]),
+        MergedResultArray[i]
+      );
+    }
+
+    return MergedResultArray;
+  }
 
   let TempStr2Int = new Uint8Array();
 
@@ -408,6 +587,8 @@ export function Dec(
 
     AdvancedMarker = true;
   }
+
+  TempStr1 = AddPadding(TempStr1);
 
   if (!Base64.isValid(TempStr1)) {
     /* v8 ignore next 3 */
@@ -467,7 +648,7 @@ export function Dec(
   Res.output = Uint8ArrayTostring(TempStr2Int);
   Res.output_B = TempStr2Int;
 
-  return Res;
+  return new DecResultDataObj(Uint8ArrayTostring(TempStr2Int), TempStr2Int);
 }
 
 export function Enc_OLD(input, key, q) {

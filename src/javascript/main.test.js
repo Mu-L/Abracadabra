@@ -44,6 +44,55 @@ function generateRandomUint8Array(length) {
   return uint8Array;
 }
 
+/**
+ * 将包含多个 Uint8Array 的数组合并成一个单一的 Uint8Array
+ * * @param {Uint8Array[]} arrays - 需要合并的 Uint8Array 数组 (例如你提到的 TestTemp)
+ * @returns {Uint8Array} - 合并后的全新单一 Uint8Array
+ */
+function concatUint8Arrays(arrays) {
+  // 1. 如果传入的数组为空，直接返回一个空的 Uint8Array
+  if (!arrays || arrays.length === 0) {
+    return new Uint8Array(0);
+  }
+
+  // 2. 如果数组里只有一个元素，直接返回该元素的副本或原对象（视你的严格程度而定）
+  // 为了防止副作用，这里建议切片返回一个副本
+  if (arrays.length === 1) {
+    return arrays[0].slice();
+  }
+
+  // 3. 计算所有 Uint8Array 分片的总长度
+  const totalLength = arrays.reduce((sum, arr) => sum + arr.length, 0);
+
+  // 4. 根据总长度，一次性开辟一个足够大的全新 Uint8Array
+  const mergedArray = new Uint8Array(totalLength);
+
+  // 5. 遍历源数组，将数据依次按偏移量写入新数组
+  let offset = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    mergedArray.set(arrays[i], offset); // 批量写入底层内存
+    offset += arrays[i].length; // 更新下一个数组的起始写入偏移量
+  }
+
+  return mergedArray;
+}
+
+function shuffle(array) {
+  // 拷贝一个新数组，避免修改原数组（推荐做法）
+  const result = [...array];
+
+  // 从后往前遍历
+  for (let i = result.length - 1; i > 0; i--) {
+    // 生成一个 0 到 i 之间的随机整数
+    const j = Math.floor(Math.random() * (i + 1));
+
+    // 交换 result[i] 和 result[j] 的值
+    [result[i], result[j]] = [result[j], result[i]]; // ES6 解构赋值语法
+  }
+
+  return result;
+}
+
 const TestData = [
   generateRandomUint8Array(1000),
   generateRandomUint8Array(2048),
@@ -352,35 +401,66 @@ test("高级加密测试", { timeout: 100000 }, () => {
     TestTemp = Abra.Output();
 
     expect(TestTemp).toStrictEqual(data);
-    /*const Abra2 = new Abracadabra("TEXT", "TEXT");
-
-    Abra2.WenyanInput(
-      "你好，这是一个分段加密测试，一个汉字有三个字节，那么十个汉字就是三十个字节，一百个汉字就有三百个字节，其实是比较长的，不过，作为测试数据来说，现在这么长的一个字符串已经足够长了。",
-      "ENCRYPT",
-      "ABRACADABRA",
-      {
-        RandomIndex: 100,
-      },
-      {
-        Enable: true,
-        UseStrongIV: false,
-        UseHMAC: false,
-        UsePBKDF2: false,
-        UseTOTP: false,
-        TOTPBaseKey: "ABRACADABRA",
-        TOTPEpoch: 1767928233717,
-        TOTPTimeStep: 0,
-        FlexibleTransfer: new FlexibleTransferConfig(
-          true,
-          false,
-          -1,
-          [100, 100]
-        ),
-      }
-    );
-
-    TestTemp = Abra2.Output();
-
-    console.log(TestTemp);*/
   });
+});
+test("灵活传输测试", { timeout: 100000 }, () => {
+  const Abra = new Abracadabra("UINT8", "UINT8");
+  //检查多重混合乱序加密密文的加解密
+  let TestTemp, TestTemp2;
+  let TOTPEpochFreeze = Date.now();
+  Abra.WenyanInput(
+    TestData[0],
+    "ENCRYPT",
+    "ABRACADABRA",
+    {
+      RandomIndex: 100,
+    },
+    {
+      Enable: true,
+      UseStrongIV: true,
+      UseHMAC: true,
+      TOTPEpoch: TOTPEpochFreeze,
+      FlexibleTransfer: {
+        Enable: true,
+        UseAONT: true,
+      },
+    }
+  );
+  TestTemp = Abra.Output();
+
+  Abra.WenyanInput(
+    TestData[1],
+    "ENCRYPT",
+    "ABRACADABRA",
+    {
+      RandomIndex: 100,
+    },
+    {
+      Enable: true,
+      UseStrongIV: true,
+      UseHMAC: true,
+      TOTPEpoch: TOTPEpochFreeze,
+      FlexibleTransfer: {
+        Enable: true,
+        UseAONT: true,
+      },
+    }
+  );
+  TestTemp2 = Abra.Output();
+
+  TestTemp = TestTemp.concat(TestTemp2); //拼接数组
+
+  TestTemp = shuffle(TestTemp); //打乱
+
+  TestTemp = concatUint8Arrays(TestTemp);
+
+  Abra.WenyanInput(TestTemp, "DECRYPT", "ABRACADABRA", undefined, {
+    TOTPEpoch: TOTPEpochFreeze,
+  }); //解密
+
+  TestTemp = Abra.Output();
+  //长度必须是 2
+  expect(TestTemp).toHaveLength(2);
+  //结果数组中包含 a 数组里的所有元素（无视顺序）
+  expect(TestTemp).toEqual(expect.arrayContaining(TestData));
 });

@@ -184,6 +184,20 @@ export class RoundObfus {
       // continue regardless of error
     }
   }
+
+  RoundReset() {
+    //转轮复位
+    this.LETTERS_ROUND_1 =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    this.LETTERS_ROUND_2 =
+      "FbPoDRStyJKAUcdahfVXlqwnOGpHZejzvmrBCigQILxkYMuWTEsN"; //手动随机打乱的乱序轮
+    this.LETTERS_ROUND_3 =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    this.NUMBERSYMBOL_ROUND_1 = "1234567890+/=";
+    this.NUMBERSYMBOL_ROUND_2 = "5=0764+389/12"; //手动随机打乱的乱序轮
+    this.NUMBERSYMBOL_ROUND_3 = "1234567890+/=";
+    this.RoundFlip = 0;
+  }
 }
 
 export class RoundObfusOLD {

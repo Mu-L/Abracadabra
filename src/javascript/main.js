@@ -225,6 +225,29 @@ export class Abracadabra {
       throw "Null Output, please input some data at first.";
     }
     if (typeof this.#res == "object") {
+      if (
+        this.#res instanceof Core.DecResultDataObj ||
+        this.#res instanceof Core.EncResultDataObj
+      ) {
+        //加密和解密结果
+        if (this.#output == Abracadabra.TEXT) {
+          return this.#res.StringData;
+        } else {
+          return this.#res.BufferData;
+        }
+      } else if (Array.isArray(this.#res)) {
+        if (
+          this.#res[0] instanceof Core.DecResultDataObj ||
+          this.#res[0] instanceof Core.EncResultDataObj
+        ) {
+          if (this.#output == Abracadabra.TEXT) {
+            return this.#res.map((item) => item.StringData);
+          } else {
+            return this.#res.map((item) => item.BufferData);
+          }
+        }
+      }
+
       if (this.#output == Abracadabra.TEXT && !Array.isArray(this.#res)) {
         //解密结果
         return this.#res.output; //要输出字符串，那么直接输出字符串，解密总会有字符串

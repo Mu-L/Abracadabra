@@ -54,7 +54,7 @@ export interface FlexibleTransferConfig {
   /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢*/
   UseAONT?: boolean;
   /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)*/
-  MessengeID?: number;
+  MessageID?: number;
   /**
    * 指定所使用的分段函数每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
    *

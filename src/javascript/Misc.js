@@ -316,7 +316,9 @@ export function packFlexibleTransferConfig(
  * @param {string} key  传入密钥
  */
 export function unpackFlexibleTransferConfig(buffer, key = null) {
-  if (buffer.length !== 6) throw new Error("Buffer must be exactly 6 bytes");
+  if (buffer.length !== 6) {
+    throw new Error("Buffer must be exactly 6 bytes");
+  }
 
   const workBuffer = new Uint8Array(buffer);
 
@@ -601,7 +603,7 @@ export function insertEncryptMarks(
       Base64.fromUint8Array(
         sub2EncryptProvider(
           distanceToEnd,
-          FlexibleTransferConfigObj.MessengeID,
+          FlexibleTransferConfigObj.MessageID,
           FlexibleTransferConfigObj.RecursionSeqNum,
           FlexibleTransferConfigObj.UseAONT,
           key,
@@ -641,7 +643,7 @@ export function insertEncryptMarks(
       Base64.fromUint8Array(
         sub2EncryptProvider(
           distanceToEnd,
-          FlexibleTransferConfigObj.MessengeID,
+          FlexibleTransferConfigObj.MessageID,
           FlexibleTransferConfigObj.RecursionSeqNum,
           FlexibleTransferConfigObj.UseAONT,
           key,
