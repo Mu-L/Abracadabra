@@ -73,6 +73,6 @@ export function secureRandom() {
   return (high * 4294967296 + low) / 2 ** 53;
 }
 
-// 如果你需要同时支持 CommonJS 和 ESM 默认导出
+// 如果需要同时支持 CommonJS 和 ESM 默认导出
 export default secureRandom;
 export { secureRandom as random };

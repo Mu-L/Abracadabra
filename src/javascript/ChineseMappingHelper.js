@@ -1022,6 +1022,7 @@ export class WenyanSimulator {
         continue;
       }
     }
+
     size = TempStrz.length;
     OriginStr = TempStrz;
     //灵活传输介入所需要的暂存
@@ -1123,13 +1124,32 @@ export class WenyanSimulator {
           FlexibleTransferDecCounter++;
         }
       }
+
       //>>>>>>>>>>>>>>>>↑
       this.RoundKey(); //轮换密钥
       i++;
       //>>>>>>>>>>>>>>>>↓
       //分段传输在循环到最后的时候，需要执行一次收尾判断。判断体和前面的一样。
-      if (i == size && FlexibleTransferDecCounter != -1) {
-        if (FlexibleTransferDecCounter == FlexibleTransferDecCounterTarget) {
+      if (i >= size) {
+        //边界情况，如果标头碰巧在全部密文的结尾处，则需要补充判断，防止出错。
+        if (FlexibleTransferMarkerDecCounter >= 8) {
+          //这个判断用来拦截灵活传输标头的末尾，灵活传输到这里，是第九次循环。针对标头的判断在追加字符串之后。
+          //在此处提前拦截可避免复杂一些的字符串截取操作。
+          FlexibleMarkerTemp = TempStr1.slice(-8); //把标头截取下来
+          TempStr1 = TempStr1.slice(0, -8); //把标头从主字符串上丢掉
+
+          let RawDataObj = unpackFlexibleTransferConfig(
+            Base64.toUint8Array(FlexibleMarkerTemp),
+            key
+          );
+          FlexibleTransferDecCounterTarget = RawDataObj.lengthToBoundary; //确定当前位置到本段边界的距离。
+          FlexibleTransferDecCounter = 0; //把Counter设置为0;
+          FlexibleTransferMarkerDecCounter = -1; //重置标头计数器
+        }
+        if (
+          FlexibleTransferDecCounter == FlexibleTransferDecCounterTarget &&
+          FlexibleTransferDecCounter != -1
+        ) {
           //刚好位于本段末尾；
           //TempStr1 就是本段的全部Base64密文数据，可能含有高级加密标头，但是这不由拦截器考虑。
 

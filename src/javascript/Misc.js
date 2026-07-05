@@ -72,8 +72,7 @@ export function wordArrayToUint8Array(data) {
 }
 
 export function Uint8ArrayTostring(fileData) {
-  let tempBase64 = Base64.fromUint8Array(fileData);
-  return Base64.decode(tempBase64);
+  return new TextDecoder().decode(fileData);
 }
 
 export function GetRandomIndex(length) {

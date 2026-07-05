@@ -285,7 +285,7 @@ export function Enc(
     }
 
     //开始递归，初始化递归标志
-    let RecursiveAdvancedEncObj = AdvancedEncObj;
+    let RecursiveAdvancedEncObj = structuredClone(AdvancedEncObj);
     RecursiveAdvancedEncObj.FlexibleTransfer.isRecursion = true;
     RecursiveAdvancedEncObj.FlexibleTransfer.RecursionSeqNum = 0;
 
@@ -299,8 +299,8 @@ export function Enc(
       ResultArray[i] = Enc(
         { output: SlicedDataArray[i] },
         key,
-        WenyanConfigObj,
-        RecursiveAdvancedEncObj,
+        structuredClone(WenyanConfigObj),
+        structuredClone(RecursiveAdvancedEncObj),
         callback
       );
       RecursiveAdvancedEncObj.FlexibleTransfer.RecursionSeqNum++;

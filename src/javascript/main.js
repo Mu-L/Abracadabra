@@ -263,28 +263,6 @@ export class Abracadabra {
 
           return encodedData;
         }
-      } else {
-        //分段输出的加密或者解密结果。
-        if (this.#output == Abracadabra.TEXT) {
-          if (typeof this.#res[0] === "string") {
-            return this.#res;
-          } else {
-            // 简洁写法：实例化一次，循环解码
-            const decoder = new TextDecoder();
-            const strArr = this.#res.map((u8a) => decoder.decode(u8a));
-            return strArr;
-          }
-        } else {
-          //输出Uint8
-          if (typeof this.#res[0] === "string") {
-            // 简洁写法：实例化一次，循环解码
-            const decoder = new TextEncoder();
-            const U8Arr = this.#res.map((str) => decoder.encode(str));
-            return U8Arr;
-          } else {
-            return this.#res;
-          }
-        }
       }
     } else if (typeof this.#res == "string") {
       //如果是字符串类型，那么就是加密结果

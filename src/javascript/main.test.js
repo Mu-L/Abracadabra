@@ -403,13 +403,19 @@ test("高级加密测试", { timeout: 100000 }, () => {
     expect(TestTemp).toStrictEqual(data);
   });
 });
-test("灵活传输测试", { timeout: 100000 }, () => {
-  const Abra = new Abracadabra("UINT8", "UINT8");
+test("灵活传输测试", { timeout: 100000, repeats: 5 }, () => {
+  let TestData2 = [
+    generateRandomUint8Array(1000),
+    generateRandomUint8Array(2048),
+  ];
+
   //检查多重混合乱序加密密文的加解密
   let TestTemp, TestTemp2;
   let TOTPEpochFreeze = Date.now();
+
+  let Abra = new Abracadabra("UINT8", "UINT8");
   Abra.WenyanInput(
-    TestData[0],
+    TestData2[0],
     "ENCRYPT",
     "ABRACADABRA",
     {
@@ -423,26 +429,28 @@ test("灵活传输测试", { timeout: 100000 }, () => {
       FlexibleTransfer: {
         Enable: true,
         UseAONT: true,
+        MessageID: 1,
       },
     }
   );
   TestTemp = Abra.Output();
 
   Abra.WenyanInput(
-    TestData[1],
+    TestData2[1],
     "ENCRYPT",
     "ABRACADABRA",
     {
       RandomIndex: 100,
     },
     {
-      Enable: true,
+      Enable: false,
       UseStrongIV: true,
       UseHMAC: true,
       TOTPEpoch: TOTPEpochFreeze,
       FlexibleTransfer: {
         Enable: true,
-        UseAONT: true,
+        UseAONT: false,
+        MessageID: 2,
       },
     }
   );
@@ -460,7 +468,8 @@ test("灵活传输测试", { timeout: 100000 }, () => {
 
   TestTemp = Abra.Output();
   //长度必须是 2
+
   expect(TestTemp).toHaveLength(2);
-  //结果数组中包含 a 数组里的所有元素（无视顺序）
-  expect(TestTemp).toEqual(expect.arrayContaining(TestData));
+  //结果数组中包含原始数组里的所有元素（无视顺序）
+  expect(TestTemp).toEqual(expect.arrayContaining(TestData2));
 });
