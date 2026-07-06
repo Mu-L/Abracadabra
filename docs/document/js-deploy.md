@@ -60,9 +60,9 @@ let Abra = new Abracadabra(); //不附带参数，
  * @param {string} mode 指定模式，可以是 ENCRYPT DECRYPT 中的一种;
  * @param {string} key 指定密钥，默认是 ABRACADABRA;
  * @param {WenyanConfig} WenyanConfigObj 文言文的生成配置;
- * @param {AdvancedEncConfig}AdvancedEncObj 指定安全加密特性;
- * @param {any}callback 回调函数，获取执行过程中特定位置的结果
- * @return {number} 成功则返回 0（失败不会返回，会抛出异常）
+ * @param {AdvancedEncConfig} AdvancedEncObj 指定安全加密特性;
+ * @param {any} callback 回调函数，获取执行过程中特定位置的结果
+ * @return {number} 成功则返回 0(失败不会返回，会抛出异常)
  */
 Abra.WenyanInput(input, mode, key, {...}, {...}, callback);
 ```
@@ -131,13 +131,28 @@ export interface AdvancedEncConfig {
    **/
   TOTPTimeStep?: number;
   /** 指定用于TOTP加密的Unix时间戳记，以毫秒为单位(JS标准)，默认为系统时间；*/
-
   TOTPEpoch?: number;
   /**
    * 指定用于TOTP加密的预共享密钥，默认为加密主密钥，推荐使用网站域名作为此项密钥以提升安全性;
    * 注意，TOTP的安全性主要依赖于此BaseKey
    **/
   TOTPBaseKey?: string;
+  /** 指定灵活传输配置，若此项不是一个Object则默认不启用 */
+  FlexibleTransfer?: FlexibleTransferConfig;
+}
+
+export interface FlexibleTransferConfig {
+  /** 指定是否启用灵活传输功能，默认 false/不开启 */
+  Enable?: boolean;
+  /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容 */
+  UseAONT?: boolean;
+  /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095) */
+  MessageID?: number;
+  /**
+   * 指定分段加密每段字节数量上下限。传入 [min, max]，默认 [20, 80]。
+   * min 小于 10, max 大于 380, 或者 max < min 将会出错;
+   */
+  RandomPragraphing?: [number, number];
 }
 ```
 
@@ -163,6 +178,13 @@ export interface AdvancedEncConfig {
 
 `TOTPBaseKey` 是字符串，默认为加密主密钥，用于指定 TOTP 加密的预共享密钥。解密时可以携带这个参数，以指定用于解密的 TOTP Basekey。
 
+`FlexibleTransfer` 接受一个 `FlexibleTransferConfig` 类型的配置对象：
+
+- **Enable**：是否启用灵活分段传输。
+- **UseAONT**：是否启用 AONT 转换(开启后安全性大幅提高，但解密必须集齐所有分段，且带来 32 字节体积开销)。
+- **MessageID**：用于归类和区分多条混合传输消息的消息标识码(-1 表示随机选择 0-4095)。
+- **RandomPragraphing**：分段字节范围 `[min, max]`，默认 `[20, 80]` 字节。
+
 ---
 
 ```javascript
@@ -185,8 +207,14 @@ Abra.WenyanInput(
     UseHMAC: true,
     UsePBKDF2: true,
     UseTOTP: true,
+    FlexibleTransfer: {
+      Enable: true,
+      UseAONT: true,
+      MessageID: 100,
+      RandomPragraphing: [30, 90],
+    },
   }
-); //指定随机指数为25，并使用骈文模式，启用高级加密，缺省项自动使用默认值
+); // 启用高级加密及灵活分段传输，缺省项自动使用默认值
 
 Abra.WenyanInput(TestTemp, "DECRYPT", "ABRACADABRA"); //解密一般不需要传入配置
 
@@ -276,7 +304,12 @@ let Result = Abra.Output(); //获取输出
 
 在调用 `Output()` 之前，你需要至少调用过一次 `WenyanInput()` 或者 `OldInput()`，否则将会抛出错误。
 
-调用 `Output()` 将获得此前输入的处理结果，其返回类型可能是 `String` 或 `Uint8Array`，取决于对象实例化时指定了何种输出模式。
+调用 `Output()` 将获得此前输入的处理结果：
+
+- **普通加/解密模式**：其返回类型为单条 `String` 或 `Uint8Array`，取决于实例初始化时指定的输出类型。
+- **开启灵活分段传输时**：
+  - **加密时**：`Output()` 会返回一个密文段数组(`String[]` 或 `Uint8Array[]`)，数组中的每个元素对应一个被切片并独立加密后的密文段落。
+  - **解密时**：`Output()` 会返回一个已解码的消息数组(`String[]` 或 `Uint8Array[]`)。需要注意的是，数组的每个元素代表一封**完整重组后**的独立消息(按 `MessageID` 归类并按序号排序还原后的完整明文)，而非密文中的单个切片段落。只有当输入的密文中混合了属于不同 `MessageID` 的切片时，数组中才会包含多个解密结果。
 
 ## 网页引用
 

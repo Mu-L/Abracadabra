@@ -1,22 +1,26 @@
 # 字符映射管线
 
-字符映射管线有三个主要部分：
+字符映射管线是魔曰（Abracadabra）将混淆后的数据符号化为可读中文字符的核心步骤，其包含三个主要部分：
 
-- **词性字符映射表** - 根据语法功能将 Base64 字符映射到中文字符
-- **虚词映射表** - 提供文言文虚词和助词的选取
-- **句式模板** - 定义用于生成连贯句子的语法结构
+- **分类映射表**：根据词法与语法功能（如名词、动词、形容词、副词）将 Base64 字符映射到相应的古文汉字。
+- **虚词表**：提供各种文言虚词与情态助词的库，用于修饰句式结构。
+- **句式模板库**：编排了一百余种文言句式，为拼接生成看似连贯的古文提供结构语法。
 
-魔曰的密本不同于任何同类型的工具，它由数百个《通用规范汉字表》中的一级字和二级字构成，也有一些非常常见的 **日本和制汉字(Kanji)**，比如 **桜(Sakura)**；没有任何让人眼花缭乱的诡异汉字。
+魔曰的字库不同于其他同类工具，它抛弃了大量让人眼花缭乱的冷门生僻字，而是从《通用规范汉字表》的一、二级字中人工挑选出几百个常用的高频汉字，并适当混合了少量的日本和制汉字（仅传统加密存在日本和制汉字），保证了密文的日常观感。
 
-字符映射表是纯人工挑选编纂的，且公开可查，查阅 [**映射表(传统)**](https://github.com/SheepChef/Abracadabra/blob/main/src/javascript/mapping.json) 或者 [**映射表(仿真)**](https://github.com/SheepChef/Abracadabra/blob/main/src/javascript/mapping_next.json) 以了解密本的全貌。
+完整的字库与模板定义公开可查，可参考 [**映射表(传统)**](https://github.com/SheepChef/Abracadabra/blob/main/src/javascript/mapping.json) 或 [**映射表(仿真)**](https://github.com/SheepChef/Abracadabra/blob/main/src/javascript/mapping_next.json)。
 
-古文句式模板编纂时参考了《古文观止》和《古文辞类纂》，资料来自 [**中国哲学书电子化计划**](http://ctext.org/zhs)。
-
-## 传统密表
+## 传统映射模式
 
 ::: tip 传统模式示例
 困句夏之全玚凪斋或骏琅咨兆咩谜理金说宙银歌舒
 :::
+
+传统模式是魔曰为了兼容老版本或追求极致压缩比而保留的经典模式：
+
+- 它的映射表由几百个无词性分类的常见汉字组成。
+- 密文表现为一长串无规律、无标点的汉字序列。
+- 会在密文的随机位置插入特定的标识字（如 `SIG_DECRYPT_CN` / `SIG_DECRYPT_JP`）来支持自动识别解密。也可以通过“去除标志”来隐藏特征，但此时解密需要手动勾选“强制解密”。
 
 ::: warning 已终止支持
 
@@ -26,42 +30,51 @@
 
 :::
 
-传统模式的密表是几百个常见汉字，加密结果为这些汉字组成的无序字符串。
+## 文言映射模式
 
-在传统模式下，会在随机位置对密文添加标志位，用来简化加解密操作流程，程序识别到加密标志位便会自动解密，无需用户手动指定解密，提高便利性。你也可以生成没有标志位的密文，此时需要手动指定强制解密。
+文言文仿真模式是魔曰的标配映射模式。它不再是将字符简单地堆叠，而是：
 
-传统模式类似此前存在过的诸多加密项目，加密效率高，密文较短，随机性很强，适用于一般场景。
+- **词性划分**：将密本汉字严格划分为名词（N）、动词（V）、形容词（A）、副词（AD）。
+- **转轮级联混淆**：每个输入的 Base64 字符，都会首先运行三重转轮级联混淆计算。
+- **查表映射**：根据当前句式模板中该位置要求的词性，在对应的子词表（名词表、动词表等）中检索字符映射。
+- **助词填充**：在非载荷字的位置，随机抽取语气词（如“也”、“乎”）、连词（如“而”、“以”）和情态动词进行组句填充，从而拼接出文法自然的仿真密文。
 
-## 文言句式模板和密表
-
-句式模板有一个固定的语法，以辅助解析。
-
-```
-8D/N/anti/MV/V/N/，/still/继/N/V/，/why/，/and/N/而/anti/V/N/ye/P
-
-// 8 -> 载荷数量
-// "/" ->语素分隔符
-// N->名词 V->动词 A->形容词 AD->副词
-// B->一般句式  C->骈文句式 D->逻辑句式 E->既是骈文句式，又有逻辑
-// P->句号 Q->问号 R->冒号和引号 | 依需要添加在句式末尾，代替原有逗号。
-// by/why/anti... -> 虚词
-
-// 其他(汉字)原样保留
-```
-
-密表则按照词性分类，将动词，形容词，副词，和名词分开映射。
-
-## 字符映射流程
-
-魔曰的字符映射完全基于 Base64，每个有效汉字对应一个 Base64 字符范围内的字符。
-
-汉字在映射时经过三重转轮混淆，确保映射关系足够复杂，进一步增加攻击抗性。
+## 映射流程图
 
 ```mermaid
 flowchart TD
-    Input["Base64 字符串"]
-    Input --> POS_Select["三重转轮混淆"]
-    POS_Select --> Map_Lookup["查询映射表"]
-    Map_Lookup --> Template_Select["选择句式模板<br/>(仅文言文模式)"]
-    Template_Select --> Generate["得到最终密文"]
+    Input([混淆后 Base64 字符串]) --> ModeCheck{判定映射模式}
+
+    subgraph Traditional ["传统模式映射 (OldMapper)"]
+        ModeCheck -->|传统模式| OldRotor[三重转轮混淆]
+        OldRotor --> OldLookup[无词性密表查表映射]
+        OldLookup --> InsertFlag{是否保留标志?}
+        InsertFlag -- 是 --> AddFlags[随机位置添加标识字]
+        InsertFlag -- 否 --> OldDone[传统密文字符串]
+        AddFlags --> OldDone
+    end
+
+    subgraph Wenyan ["文言模式映射 (WenyanSimulator)"]
+        ModeCheck -->|文言模式| Template[根据总长度与风格<br/>选择文言句式模板序列]
+        Template --> WyRotor[三重级联转轮混淆]
+
+        WyRotor --> LexicalCheck{按模板中<br/>当前位置词性}
+        LexicalCheck -->|名词 N| NMap[名词密表映射]
+        LexicalCheck -->|动词 V| VMap[动词密表映射]
+        LexicalCheck -->|形容词 A| AMap[形容词密表映射]
+        LexicalCheck -->|副词 AD| ADMap[副词密表映射]
+
+        Template --> TokenFill[非载荷字位置: 情态动词/虚词填充]
+
+        NMap --> Format[标点符号插入与段落格式化]
+        VMap --> Format
+        AMap --> Format
+        ADMap --> Format
+        TokenFill --> Format
+
+        Format --> WyDone[仿真文言文密文]
+    end
+
+    OldDone --> End([输出最终密文])
+    WyDone --> End
 ```

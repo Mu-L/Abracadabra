@@ -73,10 +73,11 @@ export default withMermaid({
         text: "技术细节",
         collapsed: false,
         items: [
-          { text: "压缩和校验管线", link: "/document/luhn-compress.md" },
-          { text: "加密和混淆管线", link: "/document/enc.md" },
-          { text: "字符映射管线", link: "/document/character.md" },
-          { text: "文言文仿真管线", link: "/document/wenyan.md" },
+          { text: "压缩和校验", link: "/document/luhn-compress.md" },
+          { text: "加密和混淆", link: "/document/enc.md" },
+          { text: "灵活分段传输", link: "/document/flexible.md" },
+          { text: "字符映射", link: "/document/character.md" },
+          { text: "文言文仿真", link: "/document/wenyan.md" },
         ],
       },
       {
