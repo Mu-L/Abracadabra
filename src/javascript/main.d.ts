@@ -82,9 +82,16 @@ export class Abracadabra {
   static AUTO: "AUTO";
 
   /**
+   * Abracadabra 魔曰加密
+   *
    * 创建一个 Abracadabra 实例
-   * @param {string} inputType 可以是 TEXT 或者 UINT8，默认TEXT
-   * @param {string} outputType 可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @param {string} inputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   * @param {string} outputType 指定输出数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @author Haruka Hokuto (SheepChef)
+   * @copyright Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
+   * @license AIPL-1.1
    */
   constructor(inputType?: "TEXT" | "UINT8", outputType?: "TEXT" | "UINT8");
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
+ * Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
  *
  * 这是一个自由软件。
  * 在遵守AIPL-1.1许可证的前提下，
@@ -47,9 +47,16 @@ export class Abracadabra {
   #res = null; // 输出的结果
 
   /**
+   * Abracadabra 魔曰加密
+   *
    * 创建一个 Abracadabra 实例
-   * @param{string}inputType 可以是 TEXT 或者 UINT8，默认TEXT
-   * @param{string}outputType 可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @param{string}inputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   * @param{string}outputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @author Haruka Hokuto (SheepChef)
+   * @copyright Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
+   * @license AIPL-1.1
    */
   constructor(inputType = Abracadabra.TEXT, outputType = Abracadabra.TEXT) {
     //初始化函数指定一些基本参数
