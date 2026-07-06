@@ -54,10 +54,10 @@ export class Abracadabra {
   constructor(inputType = Abracadabra.TEXT, outputType = Abracadabra.TEXT) {
     //初始化函数指定一些基本参数
     if (inputType != Abracadabra.TEXT && inputType != Abracadabra.UINT8) {
-      throw "Unexpected Argument";
+      throw new Error("Unexpected Argument");
     }
     if (outputType != Abracadabra.TEXT && outputType != Abracadabra.UINT8) {
-      throw "Unexpected Argument";
+      throw new Error("Unexpected Argument");
     }
 
     this.#input = inputType;
@@ -85,7 +85,7 @@ export class Abracadabra {
     if (this.#input == Abracadabra.UINT8) {
       //如果指定输入类型是UINT8
       if (Object.prototype.toString.call(input) != "[object Uint8Array]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       if (mode == Abracadabra.ENCRYPT) {
         let Nextinput = new Object();
@@ -112,7 +112,7 @@ export class Abracadabra {
     } else if (this.#input == Abracadabra.TEXT) {
       //如果指定输入类型是TEXT
       if (Object.prototype.toString.call(input) != "[object String]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       let Nextinput = new Object();
       Nextinput.output = stringToUint8Array(input);
@@ -150,7 +150,7 @@ export class Abracadabra {
     if (this.#input == Abracadabra.UINT8) {
       //如果指定输入类型是UINT8
       if (Object.prototype.toString.call(input) != "[object Uint8Array]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       //对于输入UINT8的情况，先尝试将数据转换成字符串进行预检。
       let Decoder = new TextDecoder("utf-8", { fatal: true });
@@ -186,7 +186,7 @@ export class Abracadabra {
     } else if (this.#input == Abracadabra.TEXT) {
       //如果指定输入类型是TEXT
       if (Object.prototype.toString.call(input) != "[object String]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       let preCheckRes = preCheck_OLD(input);
       if (
@@ -222,7 +222,7 @@ export class Abracadabra {
    */
   Output() {
     if (this.#res == null) {
-      throw "Null Output, please input some data at first.";
+      throw new Error("Null Output, please input some data at first.");
     }
     if (typeof this.#res == "object") {
       if (

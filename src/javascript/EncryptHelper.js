@@ -273,12 +273,12 @@ function AES_256_CTR_HMAC_SHA256_D(
     );
 
     if (HMAC_HASH.byteLength != HMAC_HASH_B.byteLength) {
-      throw "Error Decrypting. HMAC Mismatch."; // HMAC不匹配，阻止进一步解密
+      throw new Error("Error Decrypting. HMAC Mismatch."); // HMAC不匹配，阻止进一步解密
     }
 
     for (let i = 0; i < HMAC_HASH.byteLength; i++) {
       if (HMAC_HASH[i] != HMAC_HASH_B[i]) {
-        throw "Error Decrypting. HMAC Mismatch."; // HMAC不匹配，阻止进一步解密
+        throw new Error("Error Decrypting. HMAC Mismatch."); // HMAC不匹配，阻止进一步解密
       }
     }
   }

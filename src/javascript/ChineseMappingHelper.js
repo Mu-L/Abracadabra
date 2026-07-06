@@ -467,7 +467,7 @@ export class WenyanSimulator {
   distributePayload(totalLength, minLen = 20, maxLen = 80) {
     //传入非法的值将直接抛出错误
     if (minLen < 20 || maxLen > 200 || maxLen < minLen) {
-      throw "Invalid Payload Distribution Argument.";
+      throw new Error("Invalid Payload Distribution Argument.");
     }
     // 容错：如果总长甚至不够一个最小段落
     if (totalLength <= maxLen) return [totalLength];
@@ -525,17 +525,17 @@ export class WenyanSimulator {
     /* v8 ignore next 7 */
     if (RandomIndex > 100 || RandomIndex < 0) {
       //错误的输入。
-      throw "Incorrect Random Index";
+      throw new Error("Incorrect Random Index");
     }
     if (p && l) {
-      throw "Contradictory Mode Setting";
+      throw new Error("Contradictory Mode Setting");
     }
     if (
       RandomPragraphing[0] < 20 ||
       RandomPragraphing[1] > 200 ||
       RandomPragraphing[1] < RandomPragraphing[0]
     ) {
-      throw "Invalid Payload Distribution Argument.";
+      throw new Error("Invalid Payload Distribution Argument.");
     }
     if (PayloadLength > RandomPragraphing[1]) {
       //如果密文太长了，那么自动分段
@@ -1039,7 +1039,7 @@ export class WenyanSimulator {
       findtemp = this.findOriginText(temp); //查找字符的原文
       if (findtemp == this.NULL_STR) {
         /* v8 ignore next 2 */
-        throw "Bad Input.";
+        throw new Error("Bad Input.");
       }
 
       //>>>>>>>>>>>>>>>>↓
@@ -1110,7 +1110,7 @@ export class WenyanSimulator {
       if (TempStr1.endsWith(FLEXIBLE_TRANSFER_MAGIC)) {
         //识别到高级加密标头，开始介入
         if (FlexibleTransferMarkerDecCounter > -1) {
-          throw "Bad Input."; //连续两次以上检测到高级加密标头，是不可能的情况，直接丢出错误。
+          throw new Error("Bad Input."); //连续两次以上检测到高级加密标头，是不可能的情况，直接丢出错误。
         }
         FlexibleTransferMarkerDecCounter++;
         //首次识别到标头，此时只解混淆到 =/，后续有八个字符。
@@ -1420,7 +1420,7 @@ export class OldMapper {
 
       findtemp = this.findOriginText(temp); //查找第一个字符的原文
       if (findtemp == this.NULL_STR) {
-        throw "Bad Input. Try force encrypt if intended.";
+        throw new Error("Bad Input. Try force encrypt if intended.");
       }
       TempStr1 = TempStr1 + findtemp; //把找到的原文增加到字符串上
       this.RoundKey(); //轮换密钥

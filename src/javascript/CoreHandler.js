@@ -82,7 +82,7 @@ export class FlexibleTransferConfig {
       RandomPragraphing[1] > 380 ||
       RandomPragraphing[1] < RandomPragraphing[0]
     ) {
-      throw "Invalid Flexible Transfer Argument.";
+      throw new Error("Invalid Flexible Transfer Argument.");
     }
     this.isRecursion = false; //初始化递归状态
     this.RecursionSeqNum = 0;
@@ -356,7 +356,7 @@ export function Enc(
   if (AdvancedEncObj.Enable) {
     //加上高级加密配置位
     if (AdvancedEncObj.UseTOTP && AdvancedEncObj.TOTPTimeStep > 15) {
-      throw "Error Encrypting. Invalid TOTP Timestep.";
+      throw new Error("Error Encrypting. Invalid TOTP Timestep.");
     }
     let byte = packByte(
       AdvancedEncObj.UseStrongIV,
@@ -523,20 +523,30 @@ export function Dec(
     //对每一行的每个元素执行递归解密，然后执行拼接和AONT。
     for (let i = 0; i < ResultArray.length; i++) {
       let AONT = false;
+      let ErrorObj = null;
       for (let a = 0; a < ResultArray[i].length; a++) {
         if (ResultArray[i][a].UseAONT) {
           AONT = true;
         }
-        ResultArray[i][a] = Dec(
-          ResultArray[i][a],
-          key,
-          TOTPEpoch,
-          TOTPBaseKey,
-          callback
-        ).BufferData;
+        try {
+          ResultArray[i][a] = Dec(
+            ResultArray[i][a],
+            key,
+            TOTPEpoch,
+            TOTPBaseKey,
+            callback
+          ).BufferData;
+        } catch (err) {
+          //错误处理只记录一个错误。
+          ErrorObj = err;
+          continue;
+        }
       }
       if (AONT) {
         ResultArray[i].UseAONT = true;
+      }
+      if (ErrorObj != null) {
+        ResultArray[i].ErrorObj = ErrorObj;
       }
     }
     //拼接每一行的数据
@@ -556,6 +566,9 @@ export function Dec(
 
       if (row.UseAONT) {
         mergedArray.UseAONT = true;
+      }
+      if (row.ErrorObj != null) {
+        mergedArray.ErrorObj = row.ErrorObj;
       }
 
       // 返回拼接好的 Uint8Array
@@ -593,7 +606,7 @@ export function Dec(
   if (!Base64.isValid(TempStr1)) {
     /* v8 ignore next 3 */
     //检查Base64是否合法，如果不合法，那么就没有必要继续处理下去
-    throw "Error Decoding. Bad Input or Incorrect Key.";
+    throw new Error("Error Decoding. Bad Input or Incorrect Key.");
   }
   try {
     //取到IV，然后对AES加密后的数据执行解密。
@@ -627,7 +640,7 @@ export function Dec(
     if (typeof err == "string") {
       throw err;
     } else {
-      throw "Error Decoding. Bad Input or Incorrect Key.";
+      throw new Error("Error Decoding. Bad Input or Incorrect Key.");
     }
   }
 
@@ -635,7 +648,7 @@ export function Dec(
     /* v8 ignore next 3 */
     //检查密文的校验位是否匹配
     //校验不通过，则丢出错误。
-    throw "Error Decrypting. Checksum Mismatch.";
+    throw new Error("Error Decrypting. Checksum Mismatch.");
   } else {
     //校验通过，则移除校验位。
     TempStr2Int = TempStr2Int.subarray(0, TempStr2Int.byteLength - 1);
@@ -687,7 +700,7 @@ export function Dec_OLD(input, key) {
   let TempStr2Int = new Uint8Array();
   let RandomBytes = new Array(2);
   if (!Base64.isValid(TempStr1)) {
-    throw "Error Decoding. Bad Input or Incorrect Key.";
+    throw new Error("Error Decoding. Bad Input or Incorrect Key.");
   }
   try {
     TempStr2Int = Base64.toUint8Array(TempStr1);
@@ -698,7 +711,7 @@ export function Dec_OLD(input, key) {
     //解压缩
     TempStr2Int = Decompress(TempStr2Int);
   } catch (err) {
-    throw "Error Decoding. Bad Input or Incorrect Key.";
+    throw new Error("Error Decoding. Bad Input or Incorrect Key.");
   }
 
   //校验数据
@@ -711,7 +724,7 @@ export function Dec_OLD(input, key) {
     ) {
       TempStr2Int = TempStr2Int.subarray(0, TempStr2Int.byteLength - 3);
     } else {
-      throw "Error Decrypting. Checksum Mismatch.";
+      throw new Error("Error Decrypting. Checksum Mismatch.");
     }
   } else {
     TempStr2Int = TempStr2Int.subarray(0, TempStr2Int.byteLength - 1);

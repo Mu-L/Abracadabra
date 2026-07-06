@@ -109,7 +109,7 @@ test("加/解密测试", { timeout: 15000 }, () => {
     Abra.WenyanInput(TestTemp, "ENCRYPT", "ABRACADABRA", {
       PunctuationMark: i % 2 == 0,
       RandomIndex: 50,
-      RandomPragraphing: [35, 80],
+      RandomPragraphing: [35, 90],
       PianwenMode: i % 2 == 0,
       LogicMode: i % 2 != 0,
       Traditional: i % 2 != 0,
@@ -451,6 +451,7 @@ test("灵活传输测试", { timeout: 100000, repeats: 5 }, () => {
         Enable: true,
         UseAONT: false,
         MessageID: 2,
+        RandomPragraphing: [80, 80],
       },
     }
   );
