@@ -6,7 +6,7 @@ export interface WenyanConfig {
   /** 密文算法的随机程度，越大随机性越强，默认 50，最大100，超过100将会出错; */
   RandomIndex?: number;
   /** 指定超长密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错; */
-  RandomPragraphing?: [number, number];
+  RandomParagraphing?: [number, number];
   /** 指定是否强制生成骈文密文，默认 false; */
   PianwenMode?: boolean;
   /** 指定是否强制生成逻辑密文，默认 false; */
@@ -62,7 +62,7 @@ export interface FlexibleTransferConfig {
    *
    * *380字节约为500个以上的载荷字
    */
-  RandomPragraphing?: [number, number];
+  RandomParagraphing?: [number, number];
 }
 
 export interface CallbackObj {

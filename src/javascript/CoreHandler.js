@@ -37,21 +37,21 @@ export class WenyanConfig {
    *
    * @param{bool}PunctuationMark 指定是否为密文添加标点符号，默认 true/添加;
    * @param{int}RandomIndex 密文算法的随机程度，越大随机性越强，默认 50，最大100，超过100将会出错;
-   * @param{[number, number]}RandomPragraphing 密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错;
+   * @param{[number, number]}RandomParagraphing 密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错;
    * @param{bool}PianwenMode 指定是否强制生成骈文密文，默认 false;
    * @param{bool}LogicMode 指定是否强制生成逻辑密文，默认 false;
    */
   constructor(
     PunctuationMark = true,
     RandomIndex = 50,
-    RandomPragraphing = [20, 80],
+    RandomParagraphing = [20, 80],
     PianwenMode = false,
     LogicMode = false,
     Traditional = false
   ) {
     this.PunctuationMark = PunctuationMark;
     this.RandomIndex = RandomIndex;
-    this.RandomPragraphing = RandomPragraphing;
+    this.RandomParagraphing = RandomParagraphing;
     this.PianwenMode = PianwenMode;
     this.LogicMode = LogicMode;
     this.Traditional = Traditional;
@@ -65,22 +65,22 @@ export class FlexibleTransferConfig {
    * @param{bool}Enable 指定是否启用灵活传输功能，默认 false/不开启
    * @param{bool}UseAONT 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢
    * @param{number}MessageID  指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)
-   * @param{[number, number]}RandomPragraphing 指定分段加密每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
+   * @param{[number, number]}RandomParagraphing 指定分段加密每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
    */
   constructor(
     Enable = false,
     UseAONT = true,
     MessageID = -1,
-    RandomPragraphing = [20, 80]
+    RandomParagraphing = [20, 80]
   ) {
     this.Enable = Enable;
     this.UseAONT = UseAONT;
     this.MessageID = MessageID;
-    this.RandomPragraphing = RandomPragraphing;
+    this.RandomParagraphing = RandomParagraphing;
     if (
-      RandomPragraphing[0] < 10 ||
-      RandomPragraphing[1] > 380 ||
-      RandomPragraphing[1] < RandomPragraphing[0]
+      RandomParagraphing[0] < 10 ||
+      RandomParagraphing[1] > 380 ||
+      RandomParagraphing[1] < RandomParagraphing[0]
     ) {
       throw new Error("Invalid Flexible Transfer Argument.");
     }
@@ -127,9 +127,9 @@ export class AdvancedEncConfig {
       FlexibleTransfer.MessageID !== undefined
         ? FlexibleTransfer.MessageID
         : -1,
-      FlexibleTransfer.RandomPragraphing !== undefined &&
-      Array.isArray(FlexibleTransfer.RandomPragraphing)
-        ? FlexibleTransfer.RandomPragraphing
+      FlexibleTransfer.RandomParagraphing !== undefined &&
+      Array.isArray(FlexibleTransfer.RandomParagraphing)
+        ? FlexibleTransfer.RandomParagraphing
         : [20, 80]
     );*/
   }
@@ -254,9 +254,9 @@ export function Enc(
       AdvancedEncObj.FlexibleTransfer.MessageID !== undefined
         ? AdvancedEncObj.FlexibleTransfer.MessageID
         : -1,
-      AdvancedEncObj.FlexibleTransfer.RandomPragraphing !== undefined &&
-      Array.isArray(AdvancedEncObj.FlexibleTransfer.RandomPragraphing)
-        ? AdvancedEncObj.FlexibleTransfer.RandomPragraphing
+      AdvancedEncObj.FlexibleTransfer.RandomParagraphing !== undefined &&
+      Array.isArray(AdvancedEncObj.FlexibleTransfer.RandomParagraphing)
+        ? AdvancedEncObj.FlexibleTransfer.RandomParagraphing
         : [20, 80]
     ); //重新组装一个新对象，以自动缺省未传入值
 
@@ -265,8 +265,8 @@ export function Enc(
       AdvancedEncObj.FlexibleTransfer.UseAONT
         ? OriginalData.byteLength + 32
         : OriginalData.byteLength,
-      AdvancedEncObj.FlexibleTransfer.RandomPragraphing[0],
-      AdvancedEncObj.FlexibleTransfer.RandomPragraphing[1]
+      AdvancedEncObj.FlexibleTransfer.RandomParagraphing[0],
+      AdvancedEncObj.FlexibleTransfer.RandomParagraphing[1]
     );
 
     //如果启用了AONT，则执行AONT。
@@ -442,8 +442,8 @@ export function Enc(
     WenyanConfigObj.RandomIndex !== undefined
       ? WenyanConfigObj.RandomIndex
       : 50,
-    WenyanConfigObj.RandomPragraphing !== undefined
-      ? WenyanConfigObj.RandomPragraphing
+    WenyanConfigObj.RandomParagraphing !== undefined
+      ? WenyanConfigObj.RandomParagraphing
       : [20, 80],
     WenyanConfigObj.PianwenMode !== undefined
       ? WenyanConfigObj.PianwenMode

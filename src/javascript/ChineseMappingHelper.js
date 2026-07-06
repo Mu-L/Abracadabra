@@ -513,7 +513,7 @@ export class WenyanSimulator {
   selectSentence(
     PayloadLength,
     RandomIndex = 0,
-    RandomPragraphing = [20, 80],
+    RandomParagraphing = [20, 80],
     p,
     l
   ) {
@@ -531,13 +531,13 @@ export class WenyanSimulator {
       throw new Error("Contradictory Mode Setting");
     }
     if (
-      RandomPragraphing[0] < 20 ||
-      RandomPragraphing[1] > 200 ||
-      RandomPragraphing[1] < RandomPragraphing[0]
+      RandomParagraphing[0] < 20 ||
+      RandomParagraphing[1] > 200 ||
+      RandomParagraphing[1] < RandomParagraphing[0]
     ) {
       throw new Error("Invalid Payload Distribution Argument.");
     }
-    if (PayloadLength > RandomPragraphing[1]) {
+    if (PayloadLength > RandomParagraphing[1]) {
       //如果密文太长了，那么自动分段
       let distributedPayload = this.distributePayload(PayloadLength);
       let Result = [];

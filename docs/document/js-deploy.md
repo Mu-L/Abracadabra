@@ -152,7 +152,7 @@ export interface FlexibleTransferConfig {
    * 指定分段加密每段字节数量上下限。传入 [min, max]，默认 [20, 80]。
    * min 小于 10, max 大于 380, 或者 max < min 将会出错;
    */
-  RandomPragraphing?: [number, number];
+  RandomParagraphing?: [number, number];
 }
 ```
 
@@ -183,7 +183,7 @@ export interface FlexibleTransferConfig {
 - **Enable**：是否启用灵活分段传输。
 - **UseAONT**：是否启用 AONT 转换(开启后安全性大幅提高，但解密必须集齐所有分段，且带来 32 字节体积开销)。
 - **MessageID**：用于归类和区分多条混合传输消息的消息标识码(-1 表示随机选择 0-4095)。
-- **RandomPragraphing**：分段字节范围 `[min, max]`，默认 `[20, 80]` 字节。
+- **RandomParagraphing**：分段字节范围 `[min, max]`，默认 `[20, 80]` 字节。
 
 ---
 
@@ -211,7 +211,7 @@ Abra.WenyanInput(
       Enable: true,
       UseAONT: true,
       MessageID: 100,
-      RandomPragraphing: [30, 90],
+      RandomParagraphing: [30, 90],
     },
   }
 ); // 启用高级加密及灵活分段传输，缺省项自动使用默认值

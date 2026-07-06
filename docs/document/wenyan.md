@@ -9,6 +9,7 @@
 用户可以通过调节随机因子、选择特定文体风格(骈文/逻辑)来干预生成的密文特征。
 
 以下是文言仿真的核心步骤：
+
 1. **分段计算**：对超长密文进行自适应段落分割。
 2. **三段式负载分配**：将单段内的总字符数(负载)分配给“初段(Begin)”、“中段(Main)”、“末段(End)”。
 3. **句式与词性模板选择**：在对应的句式库中检索符合分配负载的文言句式，并根据文体风格(骈文/逻辑/混合)执行二次过滤。
@@ -18,7 +19,8 @@
 ## 载荷分配与句式选择
 
 ### 自适应分段
-如果输入的 Base64 字符长度超过了设定的单段上限(即 `RandomPragraphing[1]`，默认 80)，仿真器会调用 `distributePayload()` 利用一维值噪声自适应地切分成若干个分段，段落之间插入段落标记(`Z`)。
+
+如果输入的 Base64 字符长度超过了设定的单段上限(即 `RandomParagraphing[1]`，默认 80)，仿真器会调用 `distributePayload()` 利用一维值噪声自适应地切分成若干个分段，段落之间插入段落标记(`Z`)。
 
 ::: tip 提示
 
@@ -29,9 +31,11 @@
 :::
 
 ### 三段式负载分配
+
 对于单段密文，仿真器会将其总字符数均分为三份，按比例(2:6:2)分别分配给 **Begin(引入段)**、**Main(论述段)**、**End(收尾段)**。每一段都拥有一个独立的句式库，用于保证文章有合理的“起承转合”结构。
 
 ### 句式选择与风格过滤
+
 对于每一段的负载量，算法的选择流程分为两个主要阶段：
 
 - **第一阶段：负载拆分与平滑**
@@ -41,53 +45,52 @@
 
 ```mermaid
 flowchart TD
-    Start([Base64 字符长度 L]) --> SizeCheck{"L > RandomPragraphing[1]?"}
-    
+    Start([Base64 字符长度 L]) --> SizeCheck{"L > RandomParagraphing[1]?"}
+
     SizeCheck -- 是 --> Distribute[distributePayload<br/>使用值噪声切分为多段]
     SizeCheck -- 否 --> SingleSeg[单段负载]
-    
+
     Distribute --> LoopSeg[遍历各分段]
     SingleSeg --> DistributeInt["distributeInteger<br/>分配为三段负载: [Begin, Main, End]"]
     LoopSeg --> DistributeInt
-    
+
     subgraph Phase1 ["第一阶段: 负载分配 (Allocation)"]
         DistributeInt --> LoopParts1["遍历三段 i = 0, 1, 2"]
         LoopParts1 --> Decompose["子载荷拆分<br/>贪心或随机选择 1~9 整数"]
         Decompose --> LoopPartsNext1{遍历结束?}
         LoopPartsNext1 -- 否 --> LoopParts1
     end
-    
+
     Phase1 --> ProcessArray[processArray 优化平滑<br/>打乱/合并过于零碎的载荷]
-    
+
     subgraph Phase2 ["第二阶段: 句式检索与过滤 (Query & Filter)"]
         ProcessArray --> LoopParts2["遍历三段 i = 0, 1, 2<br/>确定库 Lib: Begin/Main/End"]
         LoopParts2 --> LoopSubPayloads[遍历该段下的各个子载荷 TargetPayload]
         LoopSubPayloads --> QueryLib[句式库检索<br/>找到所有匹配 TargetPayload 的模板]
-        
+
         QueryLib --> StyleCheck{校验风格设置}
         StyleCheck -->|骈文 Mode| PianFilter[匹配 C/E 类对仗骈文句式]
         StyleCheck -->|逻辑 Mode| LogicFilter[匹配 D/E 类转折逻辑句式]
         StyleCheck -->|默认 Mode| DefaultFilter[25% 概率匹配 C/D/E 类<br/>75% 概率匹配全类型]
-        
+
         PianFilter --> RandomSelect[随机挑选一个模板]
         LogicFilter --> RandomSelect
         DefaultFilter --> RandomSelect
-        
+
         RandomSelect --> LoopSubPayloadsNext{当前段子载荷处理完?}
         LoopSubPayloadsNext -- 否 --> LoopSubPayloads
         LoopSubPayloadsNext -- 是 --> LoopPartsNext2{三段均处理完?}
         LoopPartsNext2 -- 否 --> LoopParts2
     end
-    
+
     Phase2 --> AppendZ{是否为多段加密?}
     AppendZ -- 是 --> AddSeparator[追加段落分隔标志 Z]
     AppendZ -- 否 --> SegLoopNext{是否处理完所有分段?}
     AddSeparator --> SegLoopNext
-    
+
     SegLoopNext -- 否 --> LoopSeg
     SegLoopNext -- 是 --> Output[生成完整的短句模板二维数组]
 ```
-
 
 ## 语素映射与标点组装
 
@@ -105,35 +108,35 @@ flowchart TD
 flowchart TD
     Start([模板二维数组 & Base64 字符]) --> LoopSent[外层循环: 遍历句子]
     LoopSent --> LoopToken[内层循环: 遍历语素 Token]
-    
+
     LoopToken --> TypeCheck{语素类型?}
-    
+
     TypeCheck -->|载荷字 N/V/A/AD| PayloadMap["取 Base64 字符 -> 三重转轮混淆<br/>按词性查密表映射汉字"]
     TypeCheck -->|情态动词 MV| MVMap[随机选择情态动词]
     TypeCheck -->|虚词/助词| VirtualMap[查对应虚词库随机选择]
     TypeCheck -->|文字字面量| LiteralAppend[原样保留并追加]
-    
+
     TypeCheck -->|特殊标点 P/Q/R/Z| PuncHandle["标点管理器: 处理引号闭合<br/>或段落换行"]
-    
+
     PayloadMap --> AddOutput[追加到临时字符串]
     MVMap --> AddOutput
     VirtualMap --> AddOutput
     LiteralAppend --> AddOutput
     PuncHandle --> AddOutput
-    
+
     AddOutput --> CommasCheck{是否启用标点 &<br/>连续逗号达到上限?}
     CommasCheck -- 是 --> ForcePeriod[将连接标点替换为句号<br/>并重置计数器]
     CommasCheck -- 否 --> NormalComma[添加普通连接标点]
-    
+
     ForcePeriod --> CheckFinished{所有语素遍历完毕?}
     NormalComma --> CheckFinished
-    
+
     CheckFinished -- 否 --> LoopToken
     CheckFinished -- 是 --> FormatCheck{是否要求去除标点?}
-    
+
     FormatCheck -- 是 --> RemovePunc[过滤清除所有标点符号]
     FormatCheck -- 否 --> TraditionalCheck{是否要求繁体输出?}
-    
+
     RemovePunc --> TraditionalCheck
     TraditionalCheck -- 是 --> OpenCC[调用 OpenCC 转换为繁体中文]
     TraditionalCheck -- 否 --> End([输出仿真文言文密文])
