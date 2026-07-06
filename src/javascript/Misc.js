@@ -12,8 +12,11 @@
 import { Base64 } from "js-base64";
 import MersenneTwister from "mersenne-twister"; //兼容性
 import CryptoJS from "crypto-js";
-import { random } from "./CSPRNGHelper"; //密码学安全随机数的封装
-import { FlexibleTransferConfig, FLEXIBLE_TRANSFER_MAGIC } from "./CoreHandler";
+import { random } from "./CSPRNGHelper.js"; //密码学安全随机数的封装
+import {
+  FlexibleTransferConfig,
+  FLEXIBLE_TRANSFER_MAGIC,
+} from "./CoreHandler.js";
 
 const SIG_DECRYPT_JP = "桜込凪雫実沢";
 const SIG_DECRYPT_CN = "玚俟玊欤瞐珏";
