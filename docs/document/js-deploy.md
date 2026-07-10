@@ -89,6 +89,8 @@ export interface WenyanConfig {
   PunctuationMark?: boolean;
   /** 密文算法的随机程度，越大随机性越强，默认 50，最大100，超过100将会出错; */
   RandomIndex?: number;
+  /** 指定超长密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错; */
+  RandomParagraphing?: [number, number];
   /** 指定是否强制生成骈文密文，默认 false; */
   PianwenMode?: boolean;
   /** 指定是否强制生成逻辑密文，默认 false; */
@@ -101,6 +103,8 @@ export interface WenyanConfig {
 `PunctuationMark` 是布尔值，默认为 `true`。如果传入 `false`，则加密结果中将不含标点符号，解密时可以忽略这个参数。
 
 `RandomIndex` 是整数值，默认为`50`，最小值`0`，最大值`100`，超过 100 的输入将会报错。输入值越大，载荷量选择算法的随机性越大；输入值为 0 时，句式选择步骤将只选择载荷字较多的那个。解密时可以忽略这个参数。
+
+`RandomParagraphing` 是一个数组。指定文言文分段长度上下限(载荷字个数) `[min, max]`，默认 `[20, 80]` 。min 小于 20, max 大于 200, 或者 max < min 将会出错;
 
 `PianwenMode` 是布尔值，不指定则默认为 `false`。如果传入 `true`，则加密结果会优先使用骈文句式，呈现四字到五字一组的对仗格律，这有助于减少密文的总体长度。解密时可以忽略这个参数。
 

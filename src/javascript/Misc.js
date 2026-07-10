@@ -526,6 +526,15 @@ export function distributeFlexibleTransfer(
   if (minLen < 10 || maxLen > 380 || maxLen < minLen) {
     throw "Invalid Payload Distribution Argument.";
   }
+  //密文太长，超出了灵活传输可容纳的 380*4096 (1.56MB)字节的绝对上限，丢出错误。
+  if (totalLength > 1556480) {
+    throw `Payload Length Limit Exceeded.`;
+  }
+  //设置的最小分段参数过小，有造成分段数量超限的风险，丢出错误。
+  if (minLen * 4096 < totalLength) {
+    throw `Unacceptable Payload Distribution Argument. 
+    Minimal length should be higher than ${Math.floor(totalLength / 4096)}`;
+  }
   // 容错：如果总长甚至不够一个最小段落
   if (totalLength <= maxLen) return [totalLength];
 

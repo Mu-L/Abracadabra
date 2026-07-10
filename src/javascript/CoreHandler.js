@@ -538,6 +538,7 @@ export function Dec(
           ).BufferData;
         } catch (err) {
           //错误处理只记录一个错误。
+          ResultArray[i][a] = [];
           ErrorObj = err;
           continue;
         }
@@ -550,6 +551,7 @@ export function Dec(
       }
     }
     //拼接每一行的数据
+
     let MergedResultArray = ResultArray.map((row) => {
       //计算当前行所有 Uint8Array 的总长度
       const totalLength = row.reduce((sum, arr) => sum + arr.length, 0);
@@ -576,6 +578,10 @@ export function Dec(
     });
 
     for (let i = 0; i < MergedResultArray.length; i++) {
+      let ErrorObj = null;
+      if (MergedResultArray[i].ErrorObj) {
+        ErrorObj = MergedResultArray[i].ErrorObj;
+      }
       //开始执行ANOT，以及最终处理
       if (MergedResultArray[i].UseAONT) {
         MergedResultArray[i] = DeAONT(MergedResultArray[i]);
@@ -584,6 +590,9 @@ export function Dec(
         Uint8ArrayTostring(MergedResultArray[i]),
         MergedResultArray[i]
       );
+      if (ErrorObj != null) {
+        MergedResultArray.ErrorObj = ErrorObj;
+      }
     }
 
     return MergedResultArray;

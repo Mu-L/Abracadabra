@@ -248,9 +248,17 @@ export class Abracadabra {
           this.#res[0] instanceof Core.EncResultDataObj
         ) {
           if (this.#output == Abracadabra.TEXT) {
-            return this.#res.map((item) => item.StringData);
+            let OutputResult = this.#res.map((item) => item.StringData);
+            if (this.#res.ErrorObj) {
+              OutputResult.ErrorObj = this.#res.ErrorObj;
+            }
+            return OutputResult;
           } else {
-            return this.#res.map((item) => item.BufferData);
+            let OutputResult = this.#res.map((item) => item.BufferData);
+            if (this.#res.ErrorObj) {
+              OutputResult.ErrorObj = this.#res.ErrorObj;
+            }
+            return OutputResult;
           }
         }
       }
