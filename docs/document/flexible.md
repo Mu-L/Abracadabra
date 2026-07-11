@@ -19,9 +19,23 @@
 
 程序使用一维值噪声(`ValueNoise1D`)与余弦平滑插值，在设定的上下限区间内平滑、自适应地产生每一段的分段大小。这种长度分布相比纯随机数更具平滑度，使生成的古文段落长短过渡更加自然。
 
-### AONT(全有或全无)混淆
+### AONT(全有或全无)变换
 
-在分段加密前，调用 MGF1-SHA256 掩码派生算法对明文字节执行异或编码，并在数据尾部附加一个 32 字节的种子校验控制块。这使得每个密文分段彼此纠缠，防止了分段传输时的局部信息泄露。
+在分段加密前，程序采用基于 MGF1-SHA256 的 4 轮 Feistel 结构操作，对明文进行全有或全无变换(AONT)。
+
+此过程使得所有数据字节彼此纠缠，任何一点数据被篡改或者缺失都会在解密时引发雪崩效应，导致整体数据不可读。此过程是密码学安全的。
+
+::: tip 这意味着什么?
+
+开启 AONT 意味着，缺失/修改任意一个或多个段落的密文，都会导致整条消息完全无法解密，即**全有或全无**。接收方必须完整地接收到某条消息的**所有**密文段落，才能解密该条消息，否则完全无法解密。
+
+反之，接收到部分密文，将可以直接解密出对应部分的明文。
+
+:::
+
+下方的论文给出了此设计之密码学安全性的证明，有关具体代码细节请见 `EncryptHelper.js`。
+
+> Luby, Michael; Rackoff, Charles (April 1988), "How to Construct Pseudorandom Permutations from Pseudorandom Functions", SIAM Journal on Computing, 17 (2): 373–386, doi:10.1137/0217022, ISSN 0097-5397.
 
 ### 固定 10 字符标头
 
@@ -55,7 +69,7 @@
 在调用 `WenyanInput` 加密时，可在配置项中传入 `FlexibleTransfer` 的相关参数：
 
 - **Enable** (Boolean, 默认 `false`)：是否启用灵活分段传输。
-- **UseAONT** (Boolean, 默认 `true`)：是否开启全有或全无转换。开启后防篡改/防局部破解能力最强，但会带来 32 字节的长度开销。
+- **UseAONT** (Boolean, 默认 `true`)：是否开启全有或全无转换。开启后防篡改/防局部破解能力最强，但会导致加密解密时间稍微延长，以及一定的内存开销。
 - **MessageID** (Number, 默认 `-1`)：消息辨识 ID(0~4095)。若设为 -1，系统会随机生成一个，用于在混合接收时自动剥离不同发送方的消息。
 - **RandomParagraphing** (Array, 默认 `[20, 80]`)：指定分段的字节数量上下限。范围为 `[10, 380]`，区间越小密文段落越短。
 
@@ -74,7 +88,7 @@
 ```mermaid
 flowchart TD
     Start([原始数据 Uint8Array]) --> AONT_Check{是否启用 AONT?}
-    AONT_Check -- 是 --> EnAONT[EnAONT 混淆<br/>附加 32 字节控制块]
+    AONT_Check -- 是 --> EnAONT[EnAONT 混淆]
     AONT_Check -- 否 --> SegDist[分段长度计算]
     EnAONT --> SegDist
 

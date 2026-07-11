@@ -439,7 +439,7 @@ export function mgf1_sha256(seed, maskLen) {
 /**
  * AONT(全有或全无转换)函数
  *
- * 使用 4 轮 Feistel 结构实现的零膨胀 AONT 转换
+ * 使用 4 轮 Feistel 结构实现的 AONT 转换
  *
  * @param {Uint8Array} plain - 输入的原始明文
  * @returns {Uint8Array} - 输出的混淆数据
