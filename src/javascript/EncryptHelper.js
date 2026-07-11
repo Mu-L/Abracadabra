@@ -452,13 +452,13 @@ export function EnAONT(plain) {
     );
   }
 
-  // 1. 动态计算切分点。即使长度为奇数也能完美处理
+  // 动态计算切分点。即使长度为奇数也能完美处理
   const mid = Math.floor(len / 2);
   let L = plain.slice(0, mid);
   let R = plain.slice(mid);
 
-  // 2. 进行 4 轮迭代，确保左右两边的数据实现全局双向扩散
-  // 轮函数的种子采用相反侧的数据，从而实现“牵一发而动全身”
+  // 进行 4 轮迭代，确保左右两边的数据实现全局双向扩散
+  // 轮函数的种子采用相反侧的数据
   for (let round = 0; round < 4; round++) {
     // 计算当前轮次 R 需要产生的掩码长度（必须等于 L 的长度）
     const mask = mgf1_sha256(R, L.length);
@@ -474,7 +474,7 @@ export function EnAONT(plain) {
     R = temp;
   }
 
-  // 3. 拼接并返回结果（保持原始长度不变）
+  // 拼接并返回结果（保持原始长度不变）
   const result = new Uint8Array(len);
   result.set(L, 0);
   result.set(R, L.length);
@@ -498,12 +498,12 @@ export function DeAONT(cipher) {
     );
   }
 
-  // 1. 同样按照正向相同的切分点切分
+  // 按照正向相同的切分点切分
   const mid = Math.floor(len / 2);
   let L = cipher.slice(0, mid);
   let R = cipher.slice(mid);
 
-  // 2. 逆向迭代：轮数和正向完全一致，但数据处理顺序必须严格相反
+  // 逆向迭代：轮数和正向完全一致，但数据处理顺序必须严格相反
   // 正向最后一步拼接的是 (L, R)，所以逆向开始时的 L 和 R 对应正向结束时的状态
   for (let round = 3; round >= 0; round--) {
     // 先进行左右互换，倒推回上一轮结束的状态
@@ -520,7 +520,7 @@ export function DeAONT(cipher) {
     }
   }
 
-  // 3. 拼接还原出最原始的明文
+  // 拼接还原出最原始的明文
   const plain = new Uint8Array(len);
   plain.set(L, 0);
   plain.set(R, L.length);

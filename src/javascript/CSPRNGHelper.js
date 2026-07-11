@@ -3,7 +3,7 @@
  * 在模块加载时只执行一次，避免每次调用都做环境判断
  */
 const getCryptoProvider = () => {
-  // 1. 现代浏览器 / Deno / Bun / Node.js 19+ (Web Crypto API)
+  // 现代浏览器 / Deno / Bun / Node.js 19+ (Web Crypto API)
   if (
     typeof globalThis !== "undefined" &&
     globalThis.crypto &&
@@ -14,7 +14,7 @@ const getCryptoProvider = () => {
     };
   }
 
-  // 2. 旧版 Node.js (CommonJS)
+  // 旧版 Node.js (CommonJS)
   // 使用 typeof require 避免在 Webpack/Vite 等构建工具中报错
   if (
     typeof process !== "undefined" &&

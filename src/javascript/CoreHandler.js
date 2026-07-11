@@ -121,17 +121,7 @@ export class AdvancedEncConfig {
     this.TOTPTimeStep = TOTPTimeStep;
     this.TOTPEpoch = TOTPEpoch;
     this.TOTPBaseKey = TOTPBaseKey;
-    this.FlexibleTransfer = FlexibleTransfer; /*new FlexibleTransferConfig(
-      FlexibleTransfer.Enable !== undefined ? FlexibleTransfer.Enable : false,
-      FlexibleTransfer.UseAONT !== undefined ? FlexibleTransfer.UseAONT : true,
-      FlexibleTransfer.MessageID !== undefined
-        ? FlexibleTransfer.MessageID
-        : -1,
-      FlexibleTransfer.RandomParagraphing !== undefined &&
-      Array.isArray(FlexibleTransfer.RandomParagraphing)
-        ? FlexibleTransfer.RandomParagraphing
-        : [20, 80]
-    );*/
+    this.FlexibleTransfer = FlexibleTransfer;
   }
 }
 
@@ -372,19 +362,6 @@ export function Enc(
 
   let OriginStr = RemovePadding(Base64.fromUint8Array(OriginalData)); //转Base64
 
-  /*if (AdvancedEncObj.Enable) {
-    //加上高级加密标头
-    //OriginStr = ADVANCED_ENC_MAGIC + OriginStr;
-
-    let InsertRange = OriginStr.length > 10 ? 10 : OriginStr.length - 1;
-
-    let InsertIndex = GetRandomIndex(InsertRange);
-
-    OriginStr =
-      OriginStr.slice(0, InsertIndex) +
-      ADVANCED_ENC_MAGIC +
-      OriginStr.slice(InsertIndex);
-  }*/
   if (AdvancedEncObj.Enable) {
     if (
       AdvancedEncObj.FlexibleTransfer &&
