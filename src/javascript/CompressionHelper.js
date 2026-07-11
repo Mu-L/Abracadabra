@@ -103,7 +103,12 @@ function GZIP_DECOMPRESS(Data) {
   const firstTwoBytes = new Uint8Array(Data.buffer, 0, 2);
   if (firstTwoBytes[0] === 0x1f && firstTwoBytes[1] === 0x8b) {
     // Likely compressed with gzip
-    let DataOutput = pako.ungzip(Data);
+    let DataOutput;
+    try {
+      DataOutput = pako.ungzip(Data);
+    } catch (err) {
+      return Data;
+    }
     return DataOutput;
   } else {
     return Data;

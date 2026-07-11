@@ -393,7 +393,7 @@ export function Decrypt(Data, key, AdvancedEncObj = null) {
  * @param {number} maskLen - 需要生成的掩码目标长度 (字节数)
  * @returns {Uint8Array} - 生成的指定长度的伪随机掩码
  */
-function mgf1_sha256(seed, maskLen) {
+export function mgf1_sha256(seed, maskLen) {
   const hLen = 32; // SHA-256 的输出长度固定为 32 字节 (256 bits)
 
   // RFC 8017 规定: 掩码长度不能超过 2^32 * hLen
@@ -437,76 +437,92 @@ function mgf1_sha256(seed, maskLen) {
 }
 
 /**
- * 基于 SHA-256 的 AONT(全有或全无转换)
+ * AONT(全有或全无转换)函数
  *
- * @param {Uint8Array} Data 原始数据
- * @returns {Uint8Array} AONT处理后数据
+ * 使用 4 轮 Feistel 结构实现的零膨胀 AONT 转换
+ *
+ * @param {Uint8Array} plain - 输入的原始明文
+ * @returns {Uint8Array} - 输出的混淆数据
  */
-export function EnAONT(Data) {
-  let Seed = new Uint8Array(32);
-
-  for (let i = 0; i < 32; i++) {
-    //获取随机种子
-    Seed[i] = GetSecureRandomIndex(256);
+export function EnAONT(plain) {
+  const len = plain.length;
+  if (len < 2) {
+    throw new Error(
+      "Insufficient payload length. Payload too short for AONT Feistel split."
+    );
   }
 
-  //生成掩码，使用mgf1算法，配合SHA256
-  let Mask = mgf1_sha256(Seed, Data.byteLength);
+  // 1. 动态计算切分点。即使长度为奇数也能完美处理
+  const mid = Math.floor(len / 2);
+  let L = plain.slice(0, mid);
+  let R = plain.slice(mid);
 
-  // 将掩码和原始数据执行异或
-  let MaskedData = new Uint8Array(Data.byteLength);
+  // 2. 进行 4 轮迭代，确保左右两边的数据实现全局双向扩散
+  // 轮函数的种子采用相反侧的数据，从而实现“牵一发而动全身”
+  for (let round = 0; round < 4; round++) {
+    // 计算当前轮次 R 需要产生的掩码长度（必须等于 L 的长度）
+    const mask = mgf1_sha256(R, L.length);
 
-  for (let i = 0; i < Data.byteLength; i++) {
-    MaskedData[i] = Data[i] ^ Mask[i];
+    // 核心异或：L = L ^ F(R)
+    for (let i = 0; i < L.length; i++) {
+      L[i] ^= mask[i];
+    }
+
+    // 左右互换（最后一轮通常不互换，或者解密时注意对称即可，这里每轮都换，解密对应反过来）
+    const temp = L;
+    L = R;
+    R = temp;
   }
 
-  //计算异或后数据的哈希
-  let MaskedDataHash = sha256(MaskedData);
-
-  //将异或后数据的哈希，和种子本身执行异或，得到控制块。
-  let ControlBlock = new Uint8Array(32);
-
-  for (let i = 0; i < Seed.byteLength; i++) {
-    ControlBlock[i] = Seed[i] ^ MaskedDataHash[i];
-  }
-
-  //把控制块和异或后数据拼接在一起。
-  let Result = new Uint8Array(MaskedData.byteLength + ControlBlock.byteLength);
-
-  Result.set(MaskedData, 0);
-  Result.set(ControlBlock, MaskedData.byteLength);
-
-  return Result;
+  // 3. 拼接并返回结果（保持原始长度不变）
+  const result = new Uint8Array(len);
+  result.set(L, 0);
+  result.set(R, L.length);
+  return result;
 }
 
 /**
- * 基于 SHA-256 的 AONT(全有或全无转换) 逆处理函数
  *
- * @param {Uint8Array} Data AONT处理后数据
- * @returns {Uint8Array} 原始数据
+ * AONT(全有或全无转换)函数
+ *
+ * 使用 4 轮 Feistel 结构实现的 AONT 逆转换
+ *
+ * @param {Uint8Array} cipher - 输入的混淆数据
+ * @returns {Uint8Array} - 还原后的原始明文
  */
-export function DeAONT(Data) {
-  let MaskedData = Data.subarray(0, -32);
-  let ControlBlock = Data.subarray(-32);
-
-  //计算异或后数据的哈希
-  //如果有任何一丁点数据没有成功传输，则此哈希是错误的，因此，还原出的消息种子也是错误的，因此，还原出的消息也是错误的。
-  let MaskedDataHash = sha256(MaskedData);
-
-  //计算消息种子
-  let Seed = new Uint8Array(32);
-  for (let i = 0; i < Seed.byteLength; i++) {
-    Seed[i] = ControlBlock[i] ^ MaskedDataHash[i];
+export function DeAONT(cipher) {
+  const len = cipher.length;
+  if (len < 2) {
+    throw new Error(
+      "Insufficient payload length. Payload too short for AONT Feistel split."
+    );
   }
 
-  //计算掩码
-  let Mask = mgf1_sha256(Seed, MaskedData.byteLength);
+  // 1. 同样按照正向相同的切分点切分
+  const mid = Math.floor(len / 2);
+  let L = cipher.slice(0, mid);
+  let R = cipher.slice(mid);
 
-  let Result = new Uint8Array(MaskedData.byteLength);
+  // 2. 逆向迭代：轮数和正向完全一致，但数据处理顺序必须严格相反
+  // 正向最后一步拼接的是 (L, R)，所以逆向开始时的 L 和 R 对应正向结束时的状态
+  for (let round = 3; round >= 0; round--) {
+    // 先进行左右互换，倒推回上一轮结束的状态
+    const temp = L;
+    L = R;
+    R = temp;
 
-  for (let i = 0; i < MaskedData.byteLength; i++) {
-    Result[i] = MaskedData[i] ^ Mask[i];
+    // 重新计算当时 R 侧产生的掩码
+    const mask = mgf1_sha256(R, L.length);
+
+    // 再次异或即可逆转：(L ^ mask) ^ mask = L
+    for (let i = 0; i < L.length; i++) {
+      L[i] ^= mask[i];
+    }
   }
 
-  return Result;
+  // 3. 拼接还原出最原始的明文
+  const plain = new Uint8Array(len);
+  plain.set(L, 0);
+  plain.set(R, L.length);
+  return plain;
 }

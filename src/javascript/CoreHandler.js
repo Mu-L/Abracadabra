@@ -262,9 +262,7 @@ export function Enc(
 
     // 开始执行分段，分段采用余弦插值噪声
     let PayloadLengthArray = distributeFlexibleTransfer(
-      AdvancedEncObj.FlexibleTransfer.UseAONT
-        ? OriginalData.byteLength + 32
-        : OriginalData.byteLength,
+      OriginalData.byteLength,
       AdvancedEncObj.FlexibleTransfer.RandomParagraphing[0],
       AdvancedEncObj.FlexibleTransfer.RandomParagraphing[1]
     );
