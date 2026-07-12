@@ -26,11 +26,15 @@ export default defineConfig({
   },
   build: {
     outDir: "dist", // 将打包后的文件输出到 dist 目录
-    minify: "eslint", // 使用 terser 进行压缩
+    minify: true,
+    sourcemap: true,
     lib: {
       entry: "./src/javascript/main.js",
       name: "abracadabra-cn",
       fileName: "abracadabra-cn",
+    },
+    rollupOptions: {
+      external: ["crypto"],
     },
   },
   plugins: [
