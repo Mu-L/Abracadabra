@@ -250,6 +250,9 @@ export function Enc(
         : [20, 80]
     ); //重新组装一个新对象，以自动缺省未传入值
 
+    //提前压缩，递归时候避免重复压缩。校验码仍然保留。
+    OriginalData = Compress(OriginalData);
+
     // 开始执行分段，分段采用余弦插值噪声
     let PayloadLengthArray = distributeFlexibleTransfer(
       OriginalData.byteLength,
@@ -307,8 +310,16 @@ export function Enc(
   //对未处理的数据计算校验和，放在末尾
   TempArray.set([GetLuhnBit(OriginalData)], OriginalData.byteLength);
 
-  //压缩
-  OriginalData = Compress(TempArray);
+  //压缩，这里分段加密必须为假(属性不存在)或者未开启，或者不位于递归状态时，才允许执行压缩
+  if (
+    !AdvancedEncObj.FlexibleTransfer ||
+    !AdvancedEncObj.FlexibleTransfer.Enable ||
+    !AdvancedEncObj.FlexibleTransfer.isRecursion
+  ) {
+    OriginalData = Compress(TempArray);
+  } else {
+    OriginalData = TempArray;
+  }
 
   try {
     AdvancedEncObj = new AdvancedEncConfig(
@@ -561,6 +572,9 @@ export function Dec(
       if (MergedResultArray[i].UseAONT) {
         MergedResultArray[i] = DeAONT(MergedResultArray[i]);
       }
+      //解压缩
+      MergedResultArray[i] = Decompress(MergedResultArray[i]);
+      //组装最终要传回去的对象
       MergedResultArray[i] = new DecResultDataObj(
         Uint8ArrayTostring(MergedResultArray[i]),
         MergedResultArray[i]
@@ -616,8 +630,10 @@ export function Dec(
       TempStr2Int = Decrypt(TempStr2Int, key, AdvancedEncObj);
     }
 
-    //解压缩
-    TempStr2Int = Decompress(TempStr2Int);
+    //解压缩，仅在传入的不是FlexibleDataObj时候才允许执行。
+    if (!(input instanceof FlexibleTransferDataObj)) {
+      TempStr2Int = Decompress(TempStr2Int);
+    }
   } catch (err) {
     //解压缩/解密失败，丢出错误。
     /* v8 ignore next 6 */
