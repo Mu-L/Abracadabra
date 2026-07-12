@@ -809,26 +809,29 @@ export class WenyanSimulator {
             LastQuote = 0;
             CommaCounter = 0;
           } else if (LastQuote == 1) {
-            //进入此分支，意味着不会再次添加逗号
+            //进入此分支，意味着不会再次添加冒号
+            //上个块是冒号句，这句话就不增加冒号(禁止连续两个冒号)
             LastQuote = 0; //如果两个连续冒号句子，那么会在下一个句子关闭引号，而非本句
             TempStr1 = TempStr1 + "，"; //加上逗号
             NoAutoSymbol = true;
             CommaCounter++;
           }
-          //上个块是冒号句，这句话就不增加冒号(禁止连续两个冒号)
         } else if (Sentence[j][k] == "Z") {
           //插入段落分隔。
           if (!hasSpecialEndSymbol) {
+            //如果最后没有特殊符号，那么使用句号。
             hasSpecialEndSymbol = true;
             TempStr1 = TempStr1 + "。";
-            if (i != size) {
-              //最后一句话后面不插入分隔
-              TempStr1 = TempStr1 + "\n\n";
-            }
-          } else {
-            if (i != size) {
-              TempStr1 = TempStr1 + "\n\n";
-            }
+          }
+          if (q && LastQuoteMark && LastQuote > 0) {
+            //如果有未完成的冒号句，关闭冒号句
+            TempStr1 = TempStr1 + "” ";
+            LastQuote = 0;
+            LastQuoteMark = false;
+          }
+          if (i != size) {
+            //整块密文的最后一句话后面不插入分隔
+            TempStr1 = TempStr1 + "\n\n";
           }
         } else if (Sentence[j][k] == "Q") {
           //插入问号
