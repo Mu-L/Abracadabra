@@ -250,8 +250,10 @@ export function Enc(
         : [20, 80]
     ); //重新组装一个新对象，以自动缺省未传入值
 
-    //提前压缩，递归时候避免重复压缩。校验码仍然保留。
-    OriginalData = Compress(OriginalData);
+    //有AONT的时候提前压缩，递归时候避免重复压缩。校验码仍然保留。
+    if (AdvancedEncObj.FlexibleTransfer.UseAONT) {
+      OriginalData = Compress(OriginalData);
+    }
 
     // 开始执行分段，分段采用余弦插值噪声
     let PayloadLengthArray = distributeFlexibleTransfer(
@@ -570,10 +572,13 @@ export function Dec(
       }
       //开始执行ANOT，以及最终处理
       if (MergedResultArray[i].UseAONT) {
-        MergedResultArray[i] = DeAONT(MergedResultArray[i]);
+        if (MergedResultArray[i].byteLength > 1) {
+          MergedResultArray[i] = DeAONT(MergedResultArray[i]);
+        }
+        //解压缩
+        MergedResultArray[i] = Decompress(MergedResultArray[i]);
       }
-      //解压缩
-      MergedResultArray[i] = Decompress(MergedResultArray[i]);
+
       //组装最终要传回去的对象
       MergedResultArray[i] = new DecResultDataObj(
         Uint8ArrayTostring(MergedResultArray[i]),
@@ -630,8 +635,11 @@ export function Dec(
       TempStr2Int = Decrypt(TempStr2Int, key, AdvancedEncObj);
     }
 
-    //解压缩，仅在传入的不是FlexibleDataObj时候才允许执行。
-    if (!(input instanceof FlexibleTransferDataObj)) {
+    //解压缩，仅在传入的不是FlexibleDataObj时候，或者ANOT未开启的时候，才允许执行。
+    if (
+      !(input instanceof FlexibleTransferDataObj) ||
+      (input instanceof FlexibleTransferDataObj && !input.UseAONT)
+    ) {
       TempStr2Int = Decompress(TempStr2Int);
     }
   } catch (err) {

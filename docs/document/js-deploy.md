@@ -44,7 +44,7 @@ let Abra = new Abracadabra(InputMode, OutputMode);
 使用`Uint8Array`作为输入/输出方式，魔曰可以加解密任意二进制(图片/视频/任何文件)，但是不推荐这么做。
 :::
 
-### WenyanInput() 文言仿真加解密函数
+### WenyanInput() 文言仿真
 
 `WenyanInput()` 函数用来对数据执行文言文仿真加解密。
 
@@ -230,7 +230,7 @@ Abra.WenyanInput(TestTemp, "DECRYPT", "ABRACADABRA", null, {
 
 在无错误的情况下， `WenyanInput()` 函数的返回值通常是 `0`。
 
-### OldInput() 传统加密函数
+### OldInput() 传统加密
 
 ::: warning 已终止支持
 
@@ -277,7 +277,7 @@ Abra.OldInput(input, mode, key, q);
 
 在无错误的情况下， `OldInput()` 函数的返回值通常是 `0`。
 
-### BearDecode() 熊曰解密函数
+### BearDecode() 熊曰解密
 
 `BearDecode()` 允许用户解密熊曰密文。
 
@@ -294,7 +294,7 @@ Abra.BearDecode(
 let Result = Abra.Output(); //获取输出，输出只会是字符串
 ```
 
-### Output()
+### Output() 输出
 
 ```js
 import { Abracadabra } from "abracadabra-cn";

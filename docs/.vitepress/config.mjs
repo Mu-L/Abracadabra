@@ -54,6 +54,8 @@ export default withMermaid({
       { text: "Demo", link: "https://abra.js.org" },
     ],
 
+    outline: { level: [2, 3] },
+
     sidebar: [
       { text: "快速开始", link: "/document/quick-start.md" },
       { text: "功能对比", link: "/document/comparison.md" },
@@ -94,11 +96,11 @@ export default withMermaid({
       { text: "Demo页", link: "https://abra.js.org" },
       { text: "GitHub仓库", link: "https://github.com/SheepChef/Abracadabra" },
     ],
+
     logo: "/logo.png",
     socialLinks: [
       { icon: "github", link: "https://github.com/SheepChef/Abracadabra" },
     ],
-
     // 文章翻页
     docFooter: {
       prev: "上一篇",

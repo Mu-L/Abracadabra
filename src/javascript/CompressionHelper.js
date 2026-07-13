@@ -109,7 +109,11 @@ function GZIP_DECOMPRESS(Data) {
     } catch (err) {
       return Data;
     }
-    return DataOutput;
+    if (DataOutput == undefined) {
+      return Data;
+    } else {
+      return DataOutput;
+    }
   } else {
     return Data;
   }
