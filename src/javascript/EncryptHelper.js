@@ -447,9 +447,10 @@ export function mgf1_sha256(seed, maskLen) {
 export function EnAONT(plain) {
   const len = plain.length;
   if (len < 2) {
-    throw new Error(
+    /*throw new Error(
       "Insufficient payload length. Payload too short for AONT Feistel split."
-    );
+    );*/
+    return plain; //如果密文太短(长度只有一字节)，无法执行，就自动跳过执行。
   }
 
   // 动态计算切分点。即使长度为奇数也能完美处理
@@ -493,9 +494,10 @@ export function EnAONT(plain) {
 export function DeAONT(cipher) {
   const len = cipher.length;
   if (len < 2) {
-    throw new Error(
+    /*throw new Error(
       "Insufficient payload length. Payload too short for AONT Feistel split."
-    );
+    );*/
+    return cipher; //如果密文太短(长度只有一字节)，无法执行，就自动跳过执行。
   }
 
   // 按照正向相同的切分点切分
