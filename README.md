@@ -154,7 +154,7 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 
 ### 三重转轮混淆
 
-模拟古老的转轮，每次加密均会对密本映射进行偏移。
+模拟转轮密码机，每次加密均会对密本映射进行偏移。
 
 简言之，程序会将给定的密钥进行 SHA256，得到一个长度为 32 的 Uint8_t 数组。
 
@@ -181,8 +181,6 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 魔曰(仿真)：不应报也。树将棋之，书曰：“天水探火，临于云楼” ，夜乃写定绸之莺，指之不为火，换之不为苗。
 
 魔曰(仿真)：流霞以停空，局返，作文换雪。不可彰也，火之无灯，璃说之文，智鸢湛事。
-
-魔曰(传统)：桨捷欤网炯棠囍设声沢仅氖城织把夹短阐瑞玖祉作
 
 <-- ↓↓对比项目↓↓ -->
 
@@ -232,6 +230,7 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 - [**mersenne-twister**](https://github.com/boo1ean/mersenne-twister) 梅森旋转算法实现 _©Makoto Matsumoto/Takuji Nishimura_, **BSD-3-Clause** License.
 - [**opencc-js**](https://github.com/nk2028/opencc-js) 简繁体转换实现 _©nk2028_, **MIT** License.
 - [**otplib**](https://github.com/yeojz/otplib) TOTP 实现 _©Gerald Yeo_, **MIT** License.
+- [**noble-hashes**](https://github.com/paulmillr/noble-hashes) 哈希和PBKDF2算法实现 _©Paul Miller_, **MIT** License.
 
 本项目许可证与所有依赖项的许可证兼容。
 
