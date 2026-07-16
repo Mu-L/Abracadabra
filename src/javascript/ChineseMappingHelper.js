@@ -539,7 +539,11 @@ export class WenyanSimulator {
     }
     if (PayloadLength > RandomParagraphing[1]) {
       //如果密文太长了，那么自动分段
-      let distributedPayload = this.distributePayload(PayloadLength);
+      let distributedPayload = this.distributePayload(
+        PayloadLength,
+        RandomParagraphing[0],
+        RandomParagraphing[1]
+      );
       let Result = [];
       distributedPayload.forEach((Payload) => {
         Result = Result.concat(this.selectSentence(Payload, RandomIndex, p, l));
