@@ -100,6 +100,9 @@ function GZIP_COMPRESS(Data) {
   return DataOutput;
 }
 function GZIP_DECOMPRESS(Data) {
+  if (Data.byteLength < 2) {
+    return Data;
+  }
   const firstTwoBytes = new Uint8Array(Data.buffer, 0, 2);
   if (firstTwoBytes[0] === 0x1f && firstTwoBytes[1] === 0x8b) {
     // Likely compressed with gzip
