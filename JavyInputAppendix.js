@@ -60,62 +60,48 @@ function index(input) {
     return "INCORRECT JSON";
   }
 
-  if (input.method == "WENYAN") {
-    if (input.inputType == "TEXT") {
-      let Abra = new Abracadabra(input.inputType, input.outputType);
+  let Abra;
+  try {
+    Abra = new Abracadabra(input.inputType, input.outputType);
+  } catch (e) {
+    return "ERROR inputType or outputType";
+  }
+
+  let decodedInput = input.input;
+  if (input.inputType === "UINT8") {
+    decodedInput = base64ToUint8Array(input.input);
+  }
+
+  try {
+    if (input.method === "WENYAN") {
       Abra.WenyanInput(
-        input.input,
+        decodedInput,
         input.mode,
         input.key,
         input.WenyanConfig,
         input.AdvancedEncConfig
       );
-      let Output = Abra.Output();
-      if (input.outputType == "UINT8") {
-        Output = uint8ArrayToBase64(Output);
-      }
-      return Output;
-    } else if (input.inputType == "UINT8") {
-      let Abra = new Abracadabra(input.inputType, input.outputType);
-      let UINT8In = base64ToUint8Array(input.input);
-      Abra.WenyanInput(
-        UINT8In,
-        input.mode,
-        input.key,
-        input.WenyanConfig,
-        input.AdvancedEncConfig
-      );
-      let Output = Abra.Output();
-      if (input.outputType == "UINT8") {
-        Output = uint8ArrayToBase64(Output);
-      }
-      return Output;
+    } else if (input.method === "OLD") {
+      Abra.OldInput(decodedInput, input.mode, input.key, input.q);
+    } else if (input.method === "BEAR") {
+      Abra.BearDecode(decodedInput);
     } else {
-      return "ERROR inputType";
+      return "ERROR method";
     }
-  } else if (input.method == "OLD") {
-    if (input.inputType == "TEXT") {
-      let Abra = new Abracadabra(input.inputType, input.outputType);
-      Abra.Input(input.input, input.mode, input.key, input.q);
-      let Output = Abra.Output();
-      if (input.outputType == "UINT8") {
+
+    let Output = Abra.Output();
+
+    if (input.outputType === "UINT8") {
+      if (Array.isArray(Output)) {
+        Output = Output.map(arr => uint8ArrayToBase64(arr));
+      } else {
         Output = uint8ArrayToBase64(Output);
       }
-      return Output;
-    } else if (input.inputType == "UINT8") {
-      let Abra = new Abracadabra(input.inputType, input.outputType);
-      let UINT8In = base64ToUint8Array(input.input);
-      Abra.Input(UINT8In, input.mode, input.key, input.q);
-      let Output = Abra.Output();
-      if (input.outputType == "UINT8") {
-        Output = uint8ArrayToBase64(Output);
-      }
-      return Output;
-    } else {
-      return "ERROR inputType";
     }
-  } else {
-    return "ERROR method";
+
+    return Output;
+  } catch (e) {
+    return "ERROR: " + (e.message || e.toString());
   }
 }
 

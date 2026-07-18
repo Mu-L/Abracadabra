@@ -21,7 +21,7 @@ WASM 不是魔曰的主线开发任务，依赖库未经积极更新，如果遇
 ```json
 
 {
-  "method":"", // WENYAN | OLD
+  "method":"", // WENYAN | OLD | BEAR
   "inputType":"", // TEXT | UINT8
   "outputType":"", // TEXT | UINT8
   "input":"",  // 输入的数据，如果是TEXT请直接输入纯文本，如果是任意字节，请输入Base64编码字符串
@@ -33,6 +33,12 @@ WASM 不是魔曰的主线开发任务，依赖库未经积极更新，如果遇
 }
 
 ```
+
+::: tip 输出格式
+WASM 模块执行完毕后，结果将通过 `stdout` 以纯文本形式输出。
+- 如果 `outputType` 指定为 `UINT8`，则输出的是 Base64 编码字符串（或 Base64 字符串数组）。
+- 如果开启了高级加密的 `FlexibleTransfer` 灵活分段功能，输出可能是一个字符串数组（或 Base64 字符串数组）。
+:::
 
 用 wasmtime CLI 调用，在不同的命令行里有不同的方式，大多数时候是输入字符串的字符集的区别，以及是否需要在字符串外面加单引号的区别。
 
