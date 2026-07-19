@@ -2,7 +2,7 @@
   "name": "abracadabra-cn",
   "description": "Use Chinese to Encode Everything",
   "private": false,
-  "version": "3.4.0",
+  "version": "3.5.0",
   "main": "./dist/abracadabra-cn.js",
   "types": "./dist/abracadabra-cn.d.ts",
   "type": "module",
@@ -10,6 +10,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:wasm": "npm run build && npm run packwasm",
+    "build:all": "npm run build && npm run docs:build && npm run packwasm",
+    "packwasm": "javy build ./dist/abracadabra-cn-javy.js -o ./dist/abracadabra-cn.wasm",
     "prebuild": "npx patch-package && vitest run",
     "preview": "vite preview",
     "test": "npx patch-package && vitest run",
@@ -19,18 +22,18 @@
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.1.10",
+    "esbuild": "^0.28.1",
     "mermaid": "^11.8.0",
     "terser": "^5.36.0",
     "vite": "^8.1.4",
     "vitepress": "^1.6.3",
     "vitepress-plugin-mermaid": "^2.0.17",
-    "vitest": "^4.1.10"
-  },
-  "dependencies": {
+    "vitest": "^4.1.10",
     "@noble/hashes": "^2.2.0",
     "@otplib/plugin-base32-enc-dec": "^12.0.1",
     "@otplib/plugin-crypto-js": "^12.0.1",
     "@otplib/preset-browser": "^12.0.1",
+    "@ungap/structured-clone": "^1.3.3",
     "buffer": "^6.0.3",
     "crypto-js": "^4.2.0",
     "js-base64": "^3.7.7",
@@ -40,6 +43,7 @@
     "pako": "^2.1.0",
     "patch-package": "^8.0.1"
   },
+  "dependencies": {},
   "files": [
     "dist"
   ],

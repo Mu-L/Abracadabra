@@ -31,9 +31,82 @@
 
 */
 
+const B64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+function encodeBase64(data) {
+  let out = "";
+  // 如果是字符串，按照字符编码处理；如果是 Uint8Array，直接按字节处理
+  const isString = typeof data === "string";
+  const length = data.length;
+
+  for (let i = 0; i < length; i += 3) {
+    const c1 = isString ? data.charCodeAt(i) & 0xff : data[i];
+    const c2 =
+      i + 1 < length
+        ? isString
+          ? data.charCodeAt(i + 1) & 0xff
+          : data[i + 1]
+        : NaN;
+    const c3 =
+      i + 2 < length
+        ? isString
+          ? data.charCodeAt(i + 2) & 0xff
+          : data[i + 2]
+        : NaN;
+
+    out += B64_CHARS.charAt(c1 >> 2);
+    out += B64_CHARS.charAt(((c1 & 3) << 4) | (isNaN(c2) ? 0 : c2 >> 4));
+    out += isNaN(c2)
+      ? "="
+      : B64_CHARS.charAt(((c2 & 15) << 2) | (isNaN(c3) ? 0 : c3 >> 6));
+    out += isNaN(c2) || isNaN(c3) ? "=" : B64_CHARS.charAt(c3 & 63);
+  }
+  return out;
+}
+
+function decodeBase64(b64, asUint8Array = false) {
+  const cleanB64 = String(b64).replace(/[^A-Za-z0-9+/]/g, "");
+
+  if (asUint8Array) {
+    // 专门为解密逻辑准备：直接还原为二进制流
+    const bufferLength =
+      (cleanB64.length * 3) / 4 -
+      (b64.endsWith("==") ? 2 : b64.endsWith("=") ? 1 : 0);
+    const buffer = new Uint8Array(bufferLength);
+    let bufIndex = 0;
+
+    for (let i = 0; i < cleanB64.length; i += 4) {
+      const e1 = B64_CHARS.indexOf(cleanB64.charAt(i));
+      const e2 = B64_CHARS.indexOf(cleanB64.charAt(i + 1));
+      const e3 = B64_CHARS.indexOf(cleanB64.charAt(i + 2));
+      const e4 = B64_CHARS.indexOf(cleanB64.charAt(i + 3));
+
+      buffer[bufIndex++] = (e1 << 2) | (e2 >> 4);
+      if (e3 !== -1) buffer[bufIndex++] = ((e2 & 15) << 4) | (e3 >> 2);
+      if (e4 !== -1) buffer[bufIndex++] = ((e3 & 3) << 6) | e4;
+    }
+    return buffer;
+  } else {
+    // 普通字符串还原
+    let out = "";
+    for (let i = 0; i < cleanB64.length; i += 4) {
+      const e1 = B64_CHARS.indexOf(cleanB64.charAt(i));
+      const e2 = B64_CHARS.indexOf(cleanB64.charAt(i + 1));
+      const e3 = B64_CHARS.indexOf(cleanB64.charAt(i + 2));
+      const e4 = B64_CHARS.indexOf(cleanB64.charAt(i + 3));
+
+      out += String.fromCharCode((e1 << 2) | (e2 >> 4));
+      if (e3 !== -1) out += String.fromCharCode(((e2 & 15) << 4) | (e3 >> 2));
+      if (e4 !== -1) out += String.fromCharCode(((e3 & 3) << 6) | e4);
+    }
+    return out;
+  }
+}
+
 function base64ToUint8Array(base64) {
   // 将Base64字符串转换为二进制字符串
-  const binaryString = _atob(base64);
+  const binaryString = decodeBase64(base64);
   // 将二进制字符串转换为Uint8Array
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -44,7 +117,7 @@ function base64ToUint8Array(base64) {
 }
 
 function uint8ArrayToBase64(uint8Array) {
-  return _btoa(String.fromCharCode.apply(null, uint8Array));
+  return encodeBase64(String.fromCharCode.apply(null, uint8Array));
 }
 
 // Read input from stdin
@@ -64,7 +137,7 @@ function index(input) {
   try {
     Abra = new Abracadabra(input.inputType, input.outputType);
   } catch (e) {
-    return "ERROR inputType or outputType";
+    return `ERROR inputType or outputType${e.toString()}`;
   }
 
   let decodedInput = input.input;
@@ -93,7 +166,7 @@ function index(input) {
 
     if (input.outputType === "UINT8") {
       if (Array.isArray(Output)) {
-        Output = Output.map(arr => uint8ArrayToBase64(arr));
+        Output = Output.map((arr) => uint8ArrayToBase64(arr));
       } else {
         Output = uint8ArrayToBase64(Output);
       }

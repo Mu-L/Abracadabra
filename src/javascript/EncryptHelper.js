@@ -133,7 +133,13 @@ function AES_256_CTR_HMAC_SHA256_E(
       KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
     } else {
       //普通密钥衍生，使用16字节的盐
-      salt = CryptoJS.lib.WordArray.random(16);
+      //salt = CryptoJS.lib.WordArray.random(16);
+      salt = new Uint8Array(16);
+      for (let i = 0; i < salt.byteLength; i++) {
+        salt[i] = GetSecureRandomIndex(256);
+      }
+      salt = CryptoJS.lib.WordArray.create(salt);
+
       let key256Bits = pbkdf2(sha256, key, wordArrayToUint8Array(salt), {
         c: 100000,
         dkLen: 32,

@@ -47,7 +47,6 @@ export default defineConfig({
         configStore = config;
       },
       async writeBundle() {
-        // 自定义内容（这里可以修改为你需要追加的内容）
         const AppendContentPath = path.join(
           configStore.root,
           "JavyInputAppendix.js"
@@ -55,10 +54,28 @@ export default defineConfig({
         const appendContent = fs.readFileSync(AppendContentPath, "utf8");
 
         const TargetContentPath = path.join(outDir, "abracadabra-cn.js");
-        const TargetContent = fs.readFileSync(TargetContentPath, "utf8");
-        //创建全新文件
+        let TargetContent = fs.readFileSync(TargetContentPath, "utf8");
+
+        // 利用正则，修改库的 export，将其转为全局变量挂载
+        const exportRegex =
+          /export\s*\{\s*([a-zA-Z0-9_$]+)\s+as\s+Abracadabra\s*\};?/;
+
+        if (exportRegex.test(TargetContent)) {
+          // 将其替换为 globalThis.Abracadabra = XXX;
+          TargetContent = TargetContent.replace(
+            exportRegex,
+            (match, internalName) => {
+              return `globalThis.Abracadabra = ${internalName}; ${match}`;
+            }
+          );
+        }
+
+        // 组合内容
+        const cleanedContent = `${TargetContent}\n${appendContent}`;
+
+        // 创建无任何注释的全新文件
         const newFilePath = path.join(outDir, "abracadabra-cn-javy.js");
-        fs.writeFileSync(newFilePath, `${TargetContent}${appendContent}`);
+        fs.writeFileSync(newFilePath, cleanedContent);
 
         // 复制 TypeScript 声明文件到输出目录
         const dtsSourcePath = path.join(

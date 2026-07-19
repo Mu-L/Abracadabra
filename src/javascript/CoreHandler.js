@@ -10,6 +10,7 @@
  *
  */
 import { Base64 } from "js-base64";
+import structuredClone from "@ungap/structured-clone";
 import { OldMapper, WenyanSimulator } from "./ChineseMappingHelper.js";
 import { Compress, Decompress } from "./CompressionHelper.js";
 import { DeAONT, Decrypt, EnAONT, Encrypt } from "./EncryptHelper.js";
