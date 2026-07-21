@@ -83,9 +83,7 @@ Edge 插件商店的上架审核速度十分缓慢，因此更新速度也更慢
 
 本项目的 Android 客户端完全在 WebView 中静态运行。
 
-![image](https://github.com/user-attachments/assets/0f3b1c92-8853-4c70-8ef2-58630769beda)
-
-APK 使用 HBuilderX 自动打包，**完全离线运行，没有自动更新等配套功能**。
+APK 使用 Cordova 构建，**完全离线运行，不申请联网权限，没有自动更新等配套功能**。
 
 功能和界面均和前端静态网页没有差异。
 
@@ -136,8 +134,6 @@ import { Abracadabra } from "abracadabra-cn";
 配置路由，即可得到一个与[项目 Demo](https://abra.js.org/)一模一样的页面。
 
 若要自行编译或修改前端代码，请前往前端源代码仓库。
-
-浏览器插件的源码同样在前端源代码仓库，位于 crx 分支。
 
 <div style="width:103px">
 

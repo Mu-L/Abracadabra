@@ -78,8 +78,6 @@
 
 如果你想自行快速部署这个静态页，可以在Release中下载快速部署文件包。若要自行编译或修改，请前往前端源代码仓库。
 
-浏览器插件的源码同样在前端源代码仓库，位于 crx 分支。
-
 [<img src="https://img.shields.io/badge/静态页面-ffd91c?logo=cloudflarepages&style=for-the-badge&logoColor=000000" width="130"/>](https://abra.js.org/)
 [<img src="https://img.shields.io/badge/前端源码-9a10b5?style=for-the-badge" width="103" />](https://github.com/SheepChef/Abracadabra_demo)
 
@@ -101,9 +99,7 @@
 
 本项目的 Android 客户端完全在 WebView 中静态运行。  
 
-![image](https://github.com/user-attachments/assets/0f3b1c92-8853-4c70-8ef2-58630769beda)
-
-APK使用HBuilderX自动打包，**完全离线运行，没有自动更新等配套功能**。
+APK 使用 Cordova 构建，**完全离线运行，不申请联网权限，没有自动更新等配套功能**。
 
 功能和界面均和前端静态网页没有差异。  
 
@@ -238,4 +234,10 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=SheepChef/Abracadabra&type=Date)](https://star-history.com/#SheepChef/Abracadabra&Date)
+<a href="https://www.star-history.com/?repos=SheepChef%2FAbracadabra&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&theme=dark&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
+ </picture>
+</a>
