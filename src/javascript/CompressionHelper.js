@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
+ * Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
  *
  * 这是一个自由软件。
  * 在遵守AIPL-1.1许可证的前提下，
@@ -100,11 +100,23 @@ function GZIP_COMPRESS(Data) {
   return DataOutput;
 }
 function GZIP_DECOMPRESS(Data) {
+  if (Data.byteLength < 2) {
+    return Data;
+  }
   const firstTwoBytes = new Uint8Array(Data.buffer, 0, 2);
   if (firstTwoBytes[0] === 0x1f && firstTwoBytes[1] === 0x8b) {
     // Likely compressed with gzip
-    let DataOutput = pako.ungzip(Data);
-    return DataOutput;
+    let DataOutput;
+    try {
+      DataOutput = pako.ungzip(Data);
+    } catch (err) {
+      return Data;
+    }
+    if (DataOutput == undefined) {
+      return Data;
+    } else {
+      return DataOutput;
+    }
   } else {
     return Data;
   }

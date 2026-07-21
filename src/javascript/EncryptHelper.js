@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
+ * Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
  *
  * 这是一个自由软件。
  * 在遵守AIPL-1.1许可证的前提下，
@@ -16,8 +16,12 @@ import {
   wordArrayToUint8Array,
   Uint8ArrayTostring,
   GetRandomIndex,
+  GetSecureRandomIndex,
   getStep,
+  i2osp,
 } from "./Misc.js";
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { AdvancedEncConfig } from "./CoreHandler.js";
 
 function createDigestSHA256(algorithm, hmacKey, counter) {
@@ -122,19 +126,25 @@ function AES_256_CTR_HMAC_SHA256_E(
           : key
       );
       salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
-      let key256Bits = CryptoJS.PBKDF2(key, salt, {
-        keySize: 256 / 32,
-        iterations: 100000, //十万次迭代
+      let key256Bits = pbkdf2(sha256, key, salt, {
+        c: 100000,
+        dkLen: 32,
       });
-      KeyHash = key256Bits;
+      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
     } else {
       //普通密钥衍生，使用16字节的盐
-      salt = CryptoJS.lib.WordArray.random(16);
-      let key256Bits = CryptoJS.PBKDF2(key, salt, {
-        keySize: 256 / 32,
-        iterations: 100000, //十万次迭代
+      //salt = CryptoJS.lib.WordArray.random(16);
+      salt = new Uint8Array(16);
+      for (let i = 0; i < salt.byteLength; i++) {
+        salt[i] = GetSecureRandomIndex(256);
+      }
+      salt = CryptoJS.lib.WordArray.create(salt);
+
+      let key256Bits = pbkdf2(sha256, key, wordArrayToUint8Array(salt), {
+        c: 100000,
+        dkLen: 32,
       });
-      KeyHash = key256Bits;
+      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
       ResultLength = ResultLength + 16;
     }
   }
@@ -225,11 +235,11 @@ function AES_256_CTR_HMAC_SHA256_D(
       salt[15 - i] = Uint8attr.at(Uint8attr.byteLength - 1 - i);
     }
     Uint8attr = Uint8attr.subarray(0, Uint8attr.byteLength - 16);
-    let key256Bits = CryptoJS.PBKDF2(key, CryptoJS.lib.WordArray.create(salt), {
-      keySize: 256 / 32,
-      iterations: 100000, //十万次迭代
+    let key256Bits = pbkdf2(sha256, key, salt, {
+      c: 100000,
+      dkLen: 32,
     });
-    KeyHash = key256Bits;
+    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
   } else if (AdvancedEncObj.UsePBKDF2 && AdvancedEncObj.UseTOTP) {
     //推导TOTP盐值
     totp.options = {
@@ -247,11 +257,11 @@ function AES_256_CTR_HMAC_SHA256_D(
         : key
     );
     salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
-    let key256Bits = CryptoJS.PBKDF2(key, salt, {
-      keySize: 256 / 32,
-      iterations: 100000, //十万次迭代
+    let key256Bits = pbkdf2(sha256, key, salt, {
+      c: 100000,
+      dkLen: 32,
     });
-    KeyHash = key256Bits;
+    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
   }
 
   if (AdvancedEncObj.UseHMAC) {
@@ -269,12 +279,12 @@ function AES_256_CTR_HMAC_SHA256_D(
     );
 
     if (HMAC_HASH.byteLength != HMAC_HASH_B.byteLength) {
-      throw "Error Decrypting. HMAC Mismatch."; // HMAC不匹配，阻止进一步解密
+      throw new Error("Error Decrypting. HMAC Mismatch."); // HMAC不匹配，阻止进一步解密
     }
 
     for (let i = 0; i < HMAC_HASH.byteLength; i++) {
       if (HMAC_HASH[i] != HMAC_HASH_B[i]) {
-        throw "Error Decrypting. HMAC Mismatch."; // HMAC不匹配，阻止进一步解密
+        throw new Error("Error Decrypting. HMAC Mismatch."); // HMAC不匹配，阻止进一步解密
       }
     }
   }
@@ -304,8 +314,8 @@ export function Encrypt(
   let TempArray = null;
   if (!AdvancedEncObj.Enable) {
     //执行非高级安全模式的加密
-    RandomBytes.push(GetRandomIndex(256));
-    RandomBytes.push(GetRandomIndex(256));
+    RandomBytes.push(GetSecureRandomIndex(256));
+    RandomBytes.push(GetSecureRandomIndex(256));
 
     OriginalData = AES_256_CTR_E(OriginalData, key, RandomBytes); //AES-256-CTR加密
 
@@ -316,11 +326,11 @@ export function Encrypt(
     //执行高级安全模式的加密
     if (AdvancedEncObj.UseStrongIV) {
       for (let i = 0; i < 16; i++) {
-        RandomBytes.push(GetRandomIndex(256)); //获取十六个随机数字作为完整的IV
+        RandomBytes.push(GetSecureRandomIndex(256)); //获取十六个随机数字作为完整的IV
       }
     } else {
-      RandomBytes.push(GetRandomIndex(256));
-      RandomBytes.push(GetRandomIndex(256));
+      RandomBytes.push(GetSecureRandomIndex(256));
+      RandomBytes.push(GetSecureRandomIndex(256));
     }
 
     OriginalData = AES_256_CTR_HMAC_SHA256_E(
@@ -380,4 +390,147 @@ export function Decrypt(Data, key, AdvancedEncObj = null) {
 
     return Data;
   }
+}
+
+/**
+ * 基于 SHA-256 的 MGF1 实现
+ *
+ * @param {Uint8Array} seed - 输入的随机种子
+ * @param {number} maskLen - 需要生成的掩码目标长度 (字节数)
+ * @returns {Uint8Array} - 生成的指定长度的伪随机掩码
+ */
+export function mgf1_sha256(seed, maskLen) {
+  const hLen = 32; // SHA-256 的输出长度固定为 32 字节 (256 bits)
+
+  // RFC 8017 规定: 掩码长度不能超过 2^32 * hLen
+  // 在 JS 中处理超大文件时要注意内存限制，通常不会触发这个上限
+  if (maskLen > 2 ** 32 * hLen) {
+    throw new Error("Mask too long");
+  }
+
+  // 预先分配最终输出的内存空间
+  const mask = new Uint8Array(maskLen);
+
+  // 计算需要循环调用哈希函数的次数 (向上取整)
+  const iterations = Math.ceil(maskLen / hLen);
+
+  let offset = 0; // 记录当前已经填充到 mask 的字节位置
+
+  for (let counter = 0; counter < iterations; counter++) {
+    // 1. 将计数器转换为 4 字节的大端序字节串 C
+    const C = i2osp(counter);
+
+    // 2. 拼接 seed 和 C (即 RFC 中的 seed || C)
+    const dataToHash = new Uint8Array(seed.length + 4);
+    dataToHash.set(seed, 0);
+    dataToHash.set(C, seed.length);
+
+    // 3. 计算拼接后数据的 SHA-256 哈希值
+    // 【注意】这里调用你的自定义/高效 SHA-256 库
+    const hashBlock = sha256(dataToHash);
+
+    // 4. 将哈希块拷贝到最终的 mask 数组中
+    // 最后一次循环可能不需要完整的 32 字节，计算剩余需要的字节数
+    const bytesToCopy = Math.min(hLen, maskLen - offset);
+
+    // 使用 subarray 提取需要的字节，并通过 set 写入目标位置
+    mask.set(hashBlock.subarray(0, bytesToCopy), offset);
+
+    offset += bytesToCopy;
+  }
+
+  return mask; // 输出生成的掩码流
+}
+
+/**
+ * AONT(全有或全无转换)函数
+ *
+ * 使用 4 轮 Feistel 结构实现的 AONT 转换
+ *
+ * @param {Uint8Array} plain - 输入的原始明文
+ * @returns {Uint8Array} - 输出的混淆数据
+ */
+export function EnAONT(plain) {
+  const len = plain.length;
+  if (len < 2) {
+    /*throw new Error(
+      "Insufficient payload length. Payload too short for AONT Feistel split."
+    );*/
+    return plain; //如果密文太短(长度只有一字节)，无法执行，就自动跳过执行。
+  }
+
+  // 动态计算切分点。即使长度为奇数也能完美处理
+  const mid = Math.floor(len / 2);
+  let L = plain.slice(0, mid);
+  let R = plain.slice(mid);
+
+  // 进行 4 轮迭代，确保左右两边的数据实现全局双向扩散
+  // 轮函数的种子采用相反侧的数据
+  for (let round = 0; round < 4; round++) {
+    // 计算当前轮次 R 需要产生的掩码长度（必须等于 L 的长度）
+    const mask = mgf1_sha256(R, L.length);
+
+    // 核心异或：L = L ^ F(R)
+    for (let i = 0; i < L.length; i++) {
+      L[i] ^= mask[i];
+    }
+
+    // 左右互换（最后一轮通常不互换，或者解密时注意对称即可，这里每轮都换，解密对应反过来）
+    const temp = L;
+    L = R;
+    R = temp;
+  }
+
+  // 拼接并返回结果（保持原始长度不变）
+  const result = new Uint8Array(len);
+  result.set(L, 0);
+  result.set(R, L.length);
+  return result;
+}
+
+/**
+ *
+ * AONT(全有或全无转换)函数
+ *
+ * 使用 4 轮 Feistel 结构实现的 AONT 逆转换
+ *
+ * @param {Uint8Array} cipher - 输入的混淆数据
+ * @returns {Uint8Array} - 还原后的原始明文
+ */
+export function DeAONT(cipher) {
+  const len = cipher.length;
+  if (len < 2) {
+    /*throw new Error(
+      "Insufficient payload length. Payload too short for AONT Feistel split."
+    );*/
+    return cipher; //如果密文太短(长度只有一字节)，无法执行，就自动跳过执行。
+  }
+
+  // 按照正向相同的切分点切分
+  const mid = Math.floor(len / 2);
+  let L = cipher.slice(0, mid);
+  let R = cipher.slice(mid);
+
+  // 逆向迭代：轮数和正向完全一致，但数据处理顺序必须严格相反
+  // 正向最后一步拼接的是 (L, R)，所以逆向开始时的 L 和 R 对应正向结束时的状态
+  for (let round = 3; round >= 0; round--) {
+    // 先进行左右互换，倒推回上一轮结束的状态
+    const temp = L;
+    L = R;
+    R = temp;
+
+    // 重新计算当时 R 侧产生的掩码
+    const mask = mgf1_sha256(R, L.length);
+
+    // 再次异或即可逆转：(L ^ mask) ^ mask = L
+    for (let i = 0; i < L.length; i++) {
+      L[i] ^= mask[i];
+    }
+  }
+
+  // 拼接还原出最原始的明文
+  const plain = new Uint8Array(len);
+  plain.set(L, 0);
+  plain.set(R, L.length);
+  return plain;
 }

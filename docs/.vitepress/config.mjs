@@ -54,6 +54,8 @@ export default withMermaid({
       { text: "Demo", link: "https://abra.js.org" },
     ],
 
+    outline: { level: [2, 3] },
+
     sidebar: [
       { text: "快速开始", link: "/document/quick-start.md" },
       { text: "功能对比", link: "/document/comparison.md" },
@@ -73,10 +75,11 @@ export default withMermaid({
         text: "技术细节",
         collapsed: false,
         items: [
-          { text: "压缩和校验管线", link: "/document/luhn-compress.md" },
-          { text: "加密和混淆管线", link: "/document/enc.md" },
-          { text: "字符映射管线", link: "/document/character.md" },
-          { text: "文言文仿真管线", link: "/document/wenyan.md" },
+          { text: "压缩和校验", link: "/document/luhn-compress.md" },
+          { text: "加密和混淆", link: "/document/enc.md" },
+          { text: "灵活分段传输", link: "/document/flexible.md" },
+          { text: "字符映射", link: "/document/character.md" },
+          { text: "文言文仿真", link: "/document/wenyan.md" },
         ],
       },
       {
@@ -93,11 +96,11 @@ export default withMermaid({
       { text: "Demo页", link: "https://abra.js.org" },
       { text: "GitHub仓库", link: "https://github.com/SheepChef/Abracadabra" },
     ],
+
     logo: "/logo.png",
     socialLinks: [
       { icon: "github", link: "https://github.com/SheepChef/Abracadabra" },
     ],
-
     // 文章翻页
     docFooter: {
       prev: "上一篇",

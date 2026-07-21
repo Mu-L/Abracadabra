@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
+ * Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
  *
  * 这是一个自由软件。
  * 在遵守AIPL-1.1许可证的前提下，
@@ -47,17 +47,24 @@ export class Abracadabra {
   #res = null; // 输出的结果
 
   /**
+   * Abracadabra 魔曰加密
+   *
    * 创建一个 Abracadabra 实例
-   * @param{string}inputType 可以是 TEXT 或者 UINT8，默认TEXT
-   * @param{string}outputType 可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @param{string}inputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   * @param{string}outputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @author Haruka Hokuto (SheepChef)
+   * @copyright Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
+   * @license AIPL-1.1
    */
   constructor(inputType = Abracadabra.TEXT, outputType = Abracadabra.TEXT) {
     //初始化函数指定一些基本参数
     if (inputType != Abracadabra.TEXT && inputType != Abracadabra.UINT8) {
-      throw "Unexpected Argument";
+      throw new Error("Unexpected Argument");
     }
     if (outputType != Abracadabra.TEXT && outputType != Abracadabra.UINT8) {
-      throw "Unexpected Argument";
+      throw new Error("Unexpected Argument");
     }
 
     this.#input = inputType;
@@ -85,7 +92,7 @@ export class Abracadabra {
     if (this.#input == Abracadabra.UINT8) {
       //如果指定输入类型是UINT8
       if (Object.prototype.toString.call(input) != "[object Uint8Array]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       if (mode == Abracadabra.ENCRYPT) {
         let Nextinput = new Object();
@@ -112,7 +119,7 @@ export class Abracadabra {
     } else if (this.#input == Abracadabra.TEXT) {
       //如果指定输入类型是TEXT
       if (Object.prototype.toString.call(input) != "[object String]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       let Nextinput = new Object();
       Nextinput.output = stringToUint8Array(input);
@@ -150,7 +157,7 @@ export class Abracadabra {
     if (this.#input == Abracadabra.UINT8) {
       //如果指定输入类型是UINT8
       if (Object.prototype.toString.call(input) != "[object Uint8Array]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       //对于输入UINT8的情况，先尝试将数据转换成字符串进行预检。
       let Decoder = new TextDecoder("utf-8", { fatal: true });
@@ -186,7 +193,7 @@ export class Abracadabra {
     } else if (this.#input == Abracadabra.TEXT) {
       //如果指定输入类型是TEXT
       if (Object.prototype.toString.call(input) != "[object String]") {
-        throw "Unexpected Input Type";
+        throw new Error("Unexpected Input Type");
       }
       let preCheckRes = preCheck_OLD(input);
       if (
@@ -222,12 +229,44 @@ export class Abracadabra {
    */
   Output() {
     if (this.#res == null) {
-      throw "Null Output, please input some data at first.";
+      throw new Error("Null Output, please input some data at first.");
     }
     if (typeof this.#res == "object") {
-      if (this.#output == Abracadabra.TEXT) {
+      if (
+        this.#res instanceof Core.DecResultDataObj ||
+        this.#res instanceof Core.EncResultDataObj
+      ) {
+        //加密和解密结果
+        if (this.#output == Abracadabra.TEXT) {
+          return this.#res.StringData;
+        } else {
+          return this.#res.BufferData;
+        }
+      } else if (Array.isArray(this.#res)) {
+        if (
+          this.#res[0] instanceof Core.DecResultDataObj ||
+          this.#res[0] instanceof Core.EncResultDataObj
+        ) {
+          if (this.#output == Abracadabra.TEXT) {
+            let OutputResult = this.#res.map((item) => item.StringData);
+            if (this.#res.ErrorObj) {
+              OutputResult.ErrorObj = this.#res.ErrorObj;
+            }
+            return OutputResult;
+          } else {
+            let OutputResult = this.#res.map((item) => item.BufferData);
+            if (this.#res.ErrorObj) {
+              OutputResult.ErrorObj = this.#res.ErrorObj;
+            }
+            return OutputResult;
+          }
+        }
+      }
+
+      if (this.#output == Abracadabra.TEXT && !Array.isArray(this.#res)) {
+        //解密结果
         return this.#res.output; //要输出字符串，那么直接输出字符串，解密总会有字符串
-      } else {
+      } else if (!Array.isArray(this.#res)) {
         //如果要输出UINT8
         if (this.#res.output_B != null) {
           //如果有现成的可用，直接输出现成的。

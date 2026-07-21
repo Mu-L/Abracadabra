@@ -6,7 +6,7 @@ export interface WenyanConfig {
   /** 密文算法的随机程度，越大随机性越强，默认 50，最大100，超过100将会出错; */
   RandomIndex?: number;
   /** 指定超长密文所使用的分段函数每段载荷上下限。传入 min 和 max，默认 20/80。min 小于 20, max 大于 200, 或者 max < min 将会出错; */
-  RandomPragraphing?: [number, number];
+  RandomParagraphing?: [number, number];
   /** 指定是否强制生成骈文密文，默认 false; */
   PianwenMode?: boolean;
   /** 指定是否强制生成逻辑密文，默认 false; */
@@ -16,7 +16,7 @@ export interface WenyanConfig {
 }
 
 export interface AdvancedEncConfig {
-  /** 指定是否启用高级加密功能，默认 false/不开启; */
+  /** 指定是否启用高级加密功能，默认 false/不开启; 灵活传输功能的启用与否，由其自身的属性单独控制*/
   Enable?: boolean;
   /** 指定是否使用完整16字节IV，默认 true/开启*/
   UseStrongIV?: boolean;
@@ -39,17 +39,30 @@ export interface AdvancedEncConfig {
    * 注意，TOTP的安全性主要依赖于此BaseKey
    */
   TOTPBaseKey?: string;
+  /**
+   * 指定灵活传输配置，若此项不是一个Object则默认不启用。
+   * 高级加密的Enable参数，对灵活传输不生效。
+   */
+  FlexibleTransfer?: FlexibleTransferConfig;
 }
 
 //分段加密和分段传输的配置。
-//每段密文单独执行高级加密，但是，AONT在高级加密之后单独执行。
+//每段密文单独执行高级加密，AONT在加密之前单独执行。
 export interface FlexibleTransferConfig {
-  /** 指定是否启用灵活传输功能，默认 false/不开启，想要启用此项，必须启用高级加密; */
+  /** 指定是否启用灵活传输功能，默认 false/不开启 */
   Enable?: boolean;
-  /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致密文变长，解密速度变缓慢*/
+  /** 指定是否启用全有或全无转换(AONT)，默认 true/开启，开启后必须获得所有密文才可以解密完整内容，但是会导致解密速度变缓慢*/
   UseAONT?: boolean;
-  /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4096)*/
-  MessengeID?: number;
+  /** 指定临时消息ID，有助于防止混淆不同发送方的消息，默认-1为随机选择(0~4095)*/
+  MessageID?: number;
+  /**
+   * 指定所使用的分段函数每段字节数量上下限。传入 min 和 max，默认 20/80。min 小于 10, max 大于 380, 或者 max < min 将会出错;
+   *
+   * 注意，灵活传输的分段为字节级，而非载荷字级。二者互不干涉。
+   *
+   * *380字节约为500个以上的载荷字
+   */
+  RandomParagraphing?: [number, number];
 }
 
 export interface CallbackObj {
@@ -69,9 +82,16 @@ export class Abracadabra {
   static AUTO: "AUTO";
 
   /**
+   * Abracadabra 魔曰加密
+   *
    * 创建一个 Abracadabra 实例
-   * @param {string} inputType 可以是 TEXT 或者 UINT8，默认TEXT
-   * @param {string} outputType 可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @param {string} inputType 指定输入数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   * @param {string} outputType 指定输出数据类型，可以是 TEXT 或者 UINT8，默认TEXT
+   *
+   * @author Haruka Hokuto (SheepChef)
+   * @copyright Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
+   * @license AIPL-1.1
    */
   constructor(inputType?: "TEXT" | "UINT8", outputType?: "TEXT" | "UINT8");
 
@@ -166,7 +186,7 @@ export class Abracadabra {
 
   /**
    * 魔曰 获取加密/解密后的结果
-   * @returns {string | Uint8Array} 根据此前指定的输出类型，可能是字符串或字节数组
+   * @returns {string | Uint8Array} 根据此前指定的输出类型，可能是字符串或字节数组；或者分段传输输出的多个结果
    */
-  Output(): string | Uint8Array;
+  Output(): string | Uint8Array | string[] | Uint8Array[];
 }

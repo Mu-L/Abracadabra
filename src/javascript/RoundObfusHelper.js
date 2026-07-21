@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 SheepChef (a.k.a. Haruka Hokuto)
+ * Copyright (C) 2025-2026 SheepChef (a.k.a. Haruka Hokuto)
  *
  * 这是一个自由软件。
  * 在遵守AIPL-1.1许可证的前提下，
@@ -183,6 +183,20 @@ export class RoundObfus {
     } catch (err) {
       // continue regardless of error
     }
+  }
+
+  RoundReset() {
+    //转轮复位
+    this.LETTERS_ROUND_1 =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    this.LETTERS_ROUND_2 =
+      "FbPoDRStyJKAUcdahfVXlqwnOGpHZejzvmrBCigQILxkYMuWTEsN"; //手动随机打乱的乱序轮
+    this.LETTERS_ROUND_3 =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    this.NUMBERSYMBOL_ROUND_1 = "1234567890+/=";
+    this.NUMBERSYMBOL_ROUND_2 = "5=0764+389/12"; //手动随机打乱的乱序轮
+    this.NUMBERSYMBOL_ROUND_3 = "1234567890+/=";
+    this.RoundFlip = 0;
   }
 }
 
