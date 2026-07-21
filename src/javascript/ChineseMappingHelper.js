@@ -1196,7 +1196,6 @@ export class WenyanSimulator {
     }
 
     if (FlexibleTransferDataArray.length == 0) {
-      TempStr1 = TempStr1; //轮转完成之后，为Base64字符串添加Padding
       return TempStr1;
     } else {
       return FlexibleTransferDataArray;
