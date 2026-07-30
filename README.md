@@ -236,8 +236,8 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 
 <a href="https://www.star-history.com/?repos=SheepChef%2FAbracadabra&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&theme=dark&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=MD3vUIVuH1XdoiX2jjCOGqp5vwn2nTkeFw69VRIG80HqP0SiQ4CXF_0fgZyhPrHQI29sYXwkgN2FhsizTu-QWNpxROEoP09JPrDHY6w_gX-8g4p9zo52vCywJxM-mjDCHeErI3VdUAJJuwGQA7glyKdZ69ThTNPwuHsE5lU7316jdZW-O-eQ3U6sTmBT" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&theme=dark&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
  </picture>
 </a>
