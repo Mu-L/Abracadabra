@@ -234,10 +234,10 @@ AES 加密密钥和转轮密钥是同一个，均采用哈希值。
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=SheepChef%2FAbracadabra&type=date&legend=top-left">
+<a href="https://www.star-history.com/">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&theme=dark&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=dVSP0HMsyTWASwShz0njxdmJg0VbLYv3IFh12zfM9jflhQhmnEqNOURFD2HoKtnsxgFCR9otJsWcEGAHGSLJq_sLbdEkEHLXbWvO4BI2C2qAFnBuxxeCHA" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&theme=dark&legend=top-left&sealed_token=gK6iMXDtgHI9DOAwD8ZVm4rNNnQUeReIw4H5nI7cFygBC4FABiuzSOHkFlmYL6bTOd6Fsgny3mPsvo6H3ZoW71USHH8iMA63dY97lXjZBACmrBzmAhsN0w" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=gK6iMXDtgHI9DOAwD8ZVm4rNNnQUeReIw4H5nI7cFygBC4FABiuzSOHkFlmYL6bTOd6Fsgny3mPsvo6H3ZoW71USHH8iMA63dY97lXjZBACmrBzmAhsN0w" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=SheepChef/Abracadabra&type=date&legend=top-left&sealed_token=gK6iMXDtgHI9DOAwD8ZVm4rNNnQUeReIw4H5nI7cFygBC4FABiuzSOHkFlmYL6bTOd6Fsgny3mPsvo6H3ZoW71USHH8iMA63dY97lXjZBACmrBzmAhsN0w" />
  </picture>
 </a>
