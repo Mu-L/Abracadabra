@@ -10,6 +10,7 @@
  *
  */
 import CryptoJS from "crypto-js";
+import { ctr as AES_CTR } from '@noble/ciphers/aes.js';
 import { Base64 } from "js-base64";
 import { authenticator, totp, hotp } from "./otplib.d.ts";
 import {
@@ -33,17 +34,21 @@ function createDigestSHA256(algorithm, hmacKey, counter) {
 }
 
 function AES_256_CTR_E(Uint8attr, key, RandomBytes) {
-  let KeyHash = CryptoJS.SHA256(key);
-  let HashArray = wordArrayToUint8Array(KeyHash);
+  //let KeyHash = CryptoJS.SHA256(key);
+  //let HashArray = wordArrayToUint8Array(KeyHash);
+  let HashArray = sha256(new TextEncoder().encode(key));
+  let KeyHash = HashArray;
 
   let TempArray = new Uint8Array(HashArray.byteLength + 2);
   TempArray.set(HashArray, 0);
   TempArray.set([RandomBytes[0], RandomBytes[1]], HashArray.byteLength);
   HashArray = TempArray;
 
-  let HashWithRandom = CryptoJS.lib.WordArray.create(HashArray);
-  let KeyHashHash = CryptoJS.SHA256(HashWithRandom); //密钥两次哈希,附加两字节随机数
-  let HashHashArray = wordArrayToUint8Array(KeyHashHash);
+  //let HashWithRandom = CryptoJS.lib.WordArray.create(HashArray);
+  //let KeyHashHash = CryptoJS.SHA256(HashWithRandom); //密钥两次哈希,附加两字节随机数
+  //let HashHashArray = wordArrayToUint8Array(KeyHashHash);
+  let HashHashArray = sha256(HashArray);
+
 
   let ivArray = new Uint8Array(16);
 
@@ -51,6 +56,7 @@ function AES_256_CTR_E(Uint8attr, key, RandomBytes) {
     ivArray[i] = HashHashArray[i];
   }
 
+  /*
   let iv = CryptoJS.lib.WordArray.create(ivArray);
   let msg = CryptoJS.lib.WordArray.create(Uint8attr);
 
@@ -60,6 +66,13 @@ function AES_256_CTR_E(Uint8attr, key, RandomBytes) {
     iv: iv,
   });
   return wordArrayToUint8Array(Enc.ciphertext);
+  */
+  let nonce = ivArray;
+  let msg = Uint8attr;
+
+  let ciphertext_ = AES_CTR(KeyHash, nonce).encrypt(msg);
+
+  return ciphertext_;
 }
 
 /**

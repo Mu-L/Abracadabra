@@ -11,6 +11,7 @@
  */
 
 import CryptoJS from "crypto-js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { wordArrayToUint8Array } from "./Misc.js";
 import { CallbackObj } from "./CoreHandler.js";
 
@@ -42,8 +43,9 @@ export class RoundObfus {
     this.callback = callback;
 
     //初始化转轮操作的数组
-    let KeyHash = CryptoJS.SHA256(key);
-    let HashArray = wordArrayToUint8Array(KeyHash);
+    //let KeyHash = CryptoJS.SHA256(key);
+    //let HashArray = wordArrayToUint8Array(KeyHash);
+    let HashArray = sha256(new TextEncoder().encode(key));
 
     this.RoundControl = HashArray;
   }
@@ -225,8 +227,9 @@ export class RoundObfusOLD {
 
     this.NULL_STR = "孎"; //默认忽略的占位字符，一个生僻字。
     //初始化转轮操作的数组
-    let KeyHash = CryptoJS.SHA256(key);
-    let HashArray = wordArrayToUint8Array(KeyHash);
+    //let KeyHash = CryptoJS.SHA256(key);
+    //let HashArray = wordArrayToUint8Array(KeyHash);
+    let HashArray = sha256(new TextEncoder().encode(key));
 
     this.RoundControl = HashArray;
   }
