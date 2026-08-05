@@ -112,7 +112,8 @@ Abracadabra(魔曰) 是开源，安全，高效的文本加密工具。
 以下是本项目的依赖项：
 
 - [**Unishox2**](https://github.com/siara-cc/Unishox2) 短字符串压缩实现 _©Siara-cc_, **Apache-2.0** License.
-- [**crypto-js**](https://github.com/brix/crypto-js) 加密算法实现 _©Jeff Mott/Evan Vosberg_, **MIT** License.
+- [**noble-ciphers**](https://github.com/paulmillr/noble-ciphers) AES 加密算法实现 _©Paul Miller_, **MIT** License.
+- [**noble-hashes**](https://github.com/paulmillr/noble-hashes) 哈希和 PBKDF2 算法实现 _©Paul Miller_, **MIT** License.
 - [**pako**](https://github.com/nodeca/pako) GZIP 压缩实现 _©Vitaly Puzrin/Andrei Tuputcyn_, **MIT** License.
 - [**js-base64**](https://github.com/dankogai/js-base64) Base64 编码工具实现 _©Dan Kogai_, **BSD-3-Clause** License.
 - [**mersenne-twister**](https://github.com/boo1ean/mersenne-twister) 梅森旋转算法实现 _©Makoto Matsumoto/Takuji Nishimura_, **BSD-3-Clause** License.
