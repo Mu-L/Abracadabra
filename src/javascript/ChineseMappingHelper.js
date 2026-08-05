@@ -124,33 +124,14 @@ export class WenyanSimulator {
 
     //判断并查表
     if (idx != -1 || idx2 != -1) {
-      for (let key in this.Map_Obj["Actual"][type]["alphabet"]) {
-        if (this.Map_Obj["Actual"][type]["alphabet"].hasOwnProperty(key)) {
-          if (key == letter) {
-            let s2 =
-              this.Map_Obj["Actual"][type]["alphabet"][this.RoundKeyMatch(key)];
-            return s2;
-          } else if (key.toUpperCase() == letter) {
-            let s2 = String(
-              this.Map_Obj["Actual"][type]["alphabet"][
-                this.RoundKeyMatch(key.toUpperCase())
-              ]
-            );
-            return s2;
-          }
-        }
+      let mapObj = this.Map_Obj["Actual"][type]["alphabet"];
+      if (mapObj[letter]) {
+        return String(mapObj[this.RoundKeyMatch(letter)]);
       }
     } else if (idx3 != -1 || idx4 != -1) {
-      for (let key in this.Map_Obj["Actual"][type]["numbersymbol"]) {
-        if (this.Map_Obj["Actual"][type]["numbersymbol"].hasOwnProperty(key)) {
-          if (key == letter) {
-            let s2 =
-              this.Map_Obj["Actual"][type]["numbersymbol"][
-                this.RoundKeyMatch(key)
-              ];
-            return s2;
-          }
-        }
+      let mapObj = this.Map_Obj["Actual"][type]["numbersymbol"];
+      if (mapObj[letter]) {
+        return String(mapObj[this.RoundKeyMatch(letter)]);
       }
     }
 
@@ -169,20 +150,12 @@ export class WenyanSimulator {
   findOriginText(text) {
     //反向查表函数
     let letter = String(text);
-    let res;
-    for (let key in this.DecodeTable) {
-      this.DecodeTable[key].forEach((item) => {
-        if (letter == item) {
-          res = this.DRoundKeyMatch(key);
-        }
-      });
+    if (this.InverseDecodeTable && this.InverseDecodeTable[letter]) {
+      return this.DRoundKeyMatch(this.InverseDecodeTable[letter]);
     }
-    if (res) {
-      return res;
-    } else {
-      /* v8 ignore next 2 */
-      return this.NULL_STR;
-    }
+
+    /* v8 ignore next 2 */
+    return this.NULL_STR;
   }
   /**
    *
@@ -262,6 +235,14 @@ export class WenyanSimulator {
           this.PayloadLetter +
           this.Map_Obj["Actual"]["AD"]["numbersymbol"][this.NUMBERSYMBOL[i]];
       }
+    }
+
+    //在内存中构建一个反查表，方便直接查表，牺牲内存空间换速度
+    this.InverseDecodeTable = {};
+    for (let key in this.DecodeTable) {
+      this.DecodeTable[key].forEach((item) => {
+        this.InverseDecodeTable[item] = key;
+      });
     }
   }
 

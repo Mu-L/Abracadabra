@@ -399,59 +399,11 @@ export function i2osp(counter) {
  *
  */
 export function getStep(key) {
-  let second = 0;
-  /* v8 ignore next 50 */
-  switch (key) {
-    case 0:
-      second = 180;
-      break;
-    case 1:
-      second = 300;
-      break;
-    case 2:
-      second = 600;
-      break;
-    case 3:
-      second = 1800;
-      break;
-    case 4:
-      second = 7200;
-      break;
-    case 5:
-      second = 21600;
-      break;
-    case 6:
-      second = 43200;
-      break;
-    case 7:
-      second = 86400;
-      break;
-    case 8:
-      second = 259200;
-      break;
-    case 9:
-      second = 432000;
-      break;
-    case 10:
-      second = 604800;
-      break;
-    case 11:
-      second = 1814400;
-      break;
-    case 12:
-      second = 2419200;
-      break;
-    case 13:
-      second = 4838400;
-      break;
-    case 14:
-      second = 14515200;
-      break;
-    case 15:
-      second = 31557600;
-      break;
-  }
-  return second;
+  const STEPS = [
+    180, 300, 600, 1800, 7200, 21600, 43200, 86400, 259200, 432000, 604800,
+    1814400, 2419200, 4838400, 14515200, 31557600,
+  ];
+  return STEPS[key] || 0;
 }
 
 export class ValueNoise1D {
