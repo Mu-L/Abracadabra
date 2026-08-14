@@ -478,28 +478,13 @@ export function Dec(
     //如果返回了一个数组，即为识别到启用了分段传输。
     //开始递归解密。先分类，再排序，再解密。
 
-    let ResultArray = new Array([]);
-
     //开始分类，针对不同的消息ID。
-    ResultArray[0].push(TempStr1[0]);
-
-    let FoundMatch = false;
-    for (let i = 1; i < TempStr1.length; i++) {
-      for (let a = 0; a < ResultArray.length; a++) {
-        if (TempStr1[i].MessageID == ResultArray[a][0].MessageID) {
-          //如果发现了匹配行
-          ResultArray[a].push(TempStr1[i]);
-          FoundMatch = true;
-          break;
-        }
-      }
-      if (!FoundMatch) {
-        //没发现匹配项就新建一行
-        FoundMatch = false;
-        ResultArray.push(new Array(TempStr1[i]));
-      }
-      FoundMatch = false;
+    let groups = {};
+    for (let item of TempStr1) {
+      if (!groups[item.MessageID]) groups[item.MessageID] = [];
+      groups[item.MessageID].push(item);
     }
+    let ResultArray = Object.values(groups);
 
     //分类完成，紧接着排序。
 

@@ -11,7 +11,9 @@
  */
 import { Base64 } from "js-base64";
 import MersenneTwister from "mersenne-twister"; //兼容性
-import CryptoJS from "crypto-js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { ecb as AES_ECB } from "@noble/ciphers/aes.js";
+import { utf8ToBytes } from "@noble/hashes/utils.js";
 import { random } from "./CSPRNGHelper.js"; //密码学安全随机数的封装
 import {
   FlexibleTransferConfig,
@@ -260,41 +262,30 @@ export function packFlexibleTransferConfig(
   //加密逻辑(若传入了 KEY)
   if (key) {
     // 派生AES加密Key SHA256(KEY)
-    const hash1 = CryptoJS.SHA256(key);
+    const hash1 = sha256(utf8ToBytes(key));
 
     // 派生IV (CTR 计数器块)
     // 14bit 扩充填充到 16bit (2字节)
     const ivByte0 = (safeIv >> 8) & 0xff;
     const ivByte1 = safeIv & 0xff;
 
-    // 手动将 2 字节转换为 CryptoJS 的 WordArray 格式，避免版本兼容问题
-    const ivWord = (ivByte0 << 24) | (ivByte1 << 16);
-    const ivWordArr = CryptoJS.lib.WordArray.create([ivWord], 2);
+    // 拼接 hash1 + 2字节的IV
+    const concatData = new Uint8Array(hash1.length + 2); // hash1 是 32 字节，加2字节等于 34
+    concatData.set(hash1, 0); // 拷贝 hash1 到头部
+    concatData[32] = ivByte0; // 填充倒数第二个字节
+    concatData[33] = ivByte1; // 填充最后一个字节
 
     // actualIV = SHA256( Hash1 + 2字节的IV )
-    const concatData = hash1.clone().concat(ivWordArr);
-    const actualIV = CryptoJS.SHA256(concatData);
+    const actualIV = sha256(concatData);
 
     // 【步骤 C】：生成 CTR 密钥流 (Keystream)
     // 截取 actualIV 的前 16 字节(128 bit)作为 AES 的计数器块
-    const counterBlock = CryptoJS.lib.WordArray.create(
-      actualIV.words.slice(0, 4),
-      16
-    );
+    const counterBlock = actualIV.slice(0, 16);
 
     // 用 hash1 (第一层哈希) 作密钥，以 ECB 模式加密 counterBlock，
     // 这在密码学上等价于输出了 CTR 模式的第一块密钥流。
-    const encryptedBlock = CryptoJS.AES.encrypt(counterBlock, hash1, {
-      mode: CryptoJS.mode.ECB,
-      padding: CryptoJS.pad.NoPadding,
-    });
-
-    // 将 CryptoJS 的 WordArray 输出无损转换为标准的 Uint8Array
-    const keystream = new Uint8Array(16);
-    const words = encryptedBlock.ciphertext.words;
-    for (let i = 0; i < 16; i++) {
-      keystream[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
-    }
+    const cipher = AES_ECB(hash1);
+    const keystream = cipher.encrypt(counterBlock);
 
     // 掩码异或，加密前 34 bits
     ResultBuffer[0] ^= keystream[0];
@@ -330,34 +321,26 @@ export function unpackFlexibleTransferConfig(buffer, key = null) {
   // 局部 AES 解密 (如果传入了密钥)
   if (key) {
     //密钥派生过程
-    const hash1 = CryptoJS.SHA256(key);
+    const hash1 = sha256(utf8ToBytes(key));
 
-    // 组装 CTR 计数器
-    const ivWordArr = CryptoJS.lib.WordArray.create(
-      [((iv >> 8) << 24) | ((iv & 0xff) << 16)],
-      2
-    );
-    const concatData = hash1.clone().concat(ivWordArr);
-    const actualIV = CryptoJS.SHA256(concatData);
+    //直接申请 34 字节的内存
+    const concatData = new Uint8Array(34);
+
+    //将 32 字节的 hash1 拷贝到头部
+    concatData.set(hash1, 0);
+
+    // 提取 iv 的高字节和低字节，赋值到末尾
+    concatData[32] = (iv >> 8) & 0xff;
+    concatData[33] = iv & 0xff;
+
+    const actualIV = sha256(concatData);
 
     // 截取 16 字节(128 bit)作为 AES 的计数器块
-    const counterBlock = CryptoJS.lib.WordArray.create(
-      actualIV.words.slice(0, 4),
-      16
-    );
+    const counterBlock = actualIV.slice(0, 16);
 
     //生成 CTR 密钥流
-    const decryptedBlock = CryptoJS.AES.encrypt(counterBlock, hash1, {
-      mode: CryptoJS.mode.ECB,
-      padding: CryptoJS.pad.NoPadding,
-    });
-
-    // 提取密钥流到 Uint8Array
-    const keystream = new Uint8Array(16);
-    const words = decryptedBlock.ciphertext.words;
-    for (let i = 0; i < 16; i++) {
-      keystream[i] = (words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff;
-    }
+    const cipher = AES_ECB(hash1);
+    const keystream = cipher.encrypt(counterBlock);
 
     //异或还原
     workBuffer[0] ^= keystream[0];
@@ -416,59 +399,11 @@ export function i2osp(counter) {
  *
  */
 export function getStep(key) {
-  let second = 0;
-  /* v8 ignore next 50 */
-  switch (key) {
-    case 0:
-      second = 180;
-      break;
-    case 1:
-      second = 300;
-      break;
-    case 2:
-      second = 600;
-      break;
-    case 3:
-      second = 1800;
-      break;
-    case 4:
-      second = 7200;
-      break;
-    case 5:
-      second = 21600;
-      break;
-    case 6:
-      second = 43200;
-      break;
-    case 7:
-      second = 86400;
-      break;
-    case 8:
-      second = 259200;
-      break;
-    case 9:
-      second = 432000;
-      break;
-    case 10:
-      second = 604800;
-      break;
-    case 11:
-      second = 1814400;
-      break;
-    case 12:
-      second = 2419200;
-      break;
-    case 13:
-      second = 4838400;
-      break;
-    case 14:
-      second = 14515200;
-      break;
-    case 15:
-      second = 31557600;
-      break;
-  }
-  return second;
+  const STEPS = [
+    180, 300, 600, 1800, 7200, 21600, 43200, 86400, 259200, 432000, 604800,
+    1814400, 2419200, 4838400, 14515200, 31557600,
+  ];
+  return STEPS[key] || 0;
 }
 
 export class ValueNoise1D {

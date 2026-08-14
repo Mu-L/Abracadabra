@@ -9,9 +9,14 @@
  * 本作品应随附一份完整的 AIPL-1.1 许可证全文。
  *
  */
-import CryptoJS from "crypto-js";
+import { ctr as AES_CTR } from "@noble/ciphers/aes.js";
 import { Base64 } from "js-base64";
-import { authenticator, totp, hotp } from "./otplib.d.ts";
+import { totp } from "./otplib.d.ts";
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { hexToBytes, bytesToHex, utf8ToBytes } from "@noble/hashes/utils.js";
+import { AdvancedEncConfig } from "./CoreHandler.js";
 import {
   wordArrayToUint8Array,
   Uint8ArrayTostring,
@@ -20,30 +25,26 @@ import {
   getStep,
   i2osp,
 } from "./Misc.js";
-import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
-import { sha256 } from "@noble/hashes/sha2.js";
-import { AdvancedEncConfig } from "./CoreHandler.js";
 
 function createDigestSHA256(algorithm, hmacKey, counter) {
-  let msg = CryptoJS.enc.Hex.parse(counter);
-  let key = CryptoJS.enc.Hex.parse(hmacKey);
-  let HMAC_HASH = CryptoJS.HmacSHA256(msg, key);
+  const msgBytes = hexToBytes(counter);
+  const keyBytes = hexToBytes(hmacKey);
 
-  return CryptoJS.enc.Hex.stringify(HMAC_HASH);
+  const hmacHash = hmac(sha256, keyBytes, msgBytes);
+
+  return bytesToHex(hmacHash);
 }
 
 function AES_256_CTR_E(Uint8attr, key, RandomBytes) {
-  let KeyHash = CryptoJS.SHA256(key);
-  let HashArray = wordArrayToUint8Array(KeyHash);
+  let HashArray = sha256(utf8ToBytes(key));
+  let KeyHash = HashArray;
 
   let TempArray = new Uint8Array(HashArray.byteLength + 2);
   TempArray.set(HashArray, 0);
   TempArray.set([RandomBytes[0], RandomBytes[1]], HashArray.byteLength);
   HashArray = TempArray;
 
-  let HashWithRandom = CryptoJS.lib.WordArray.create(HashArray);
-  let KeyHashHash = CryptoJS.SHA256(HashWithRandom); //密钥两次哈希,附加两字节随机数
-  let HashHashArray = wordArrayToUint8Array(KeyHashHash);
+  let HashHashArray = sha256(HashArray);
 
   let ivArray = new Uint8Array(16);
 
@@ -51,15 +52,12 @@ function AES_256_CTR_E(Uint8attr, key, RandomBytes) {
     ivArray[i] = HashHashArray[i];
   }
 
-  let iv = CryptoJS.lib.WordArray.create(ivArray);
-  let msg = CryptoJS.lib.WordArray.create(Uint8attr);
+  let nonce = ivArray;
+  let msg = Uint8attr;
 
-  let Enc = CryptoJS.AES.encrypt(msg, KeyHash, {
-    mode: CryptoJS.mode.CTR,
-    padding: CryptoJS.pad.NoPadding,
-    iv: iv,
-  });
-  return wordArrayToUint8Array(Enc.ciphertext);
+  let ciphertext_ = AES_CTR(KeyHash, nonce).encrypt(msg);
+
+  return ciphertext_;
 }
 
 /**
@@ -73,8 +71,9 @@ function AES_256_CTR_HMAC_SHA256_E(
   RandomBytes,
   AdvancedEncObj
 ) {
-  let KeyHash = CryptoJS.SHA256(key);
-  let HashArray = wordArrayToUint8Array(KeyHash);
+  let HashArray = sha256(utf8ToBytes(key));
+  let KeyHash = HashArray;
+
   let HMAC_HASH = null;
   let ivArray = new Uint8Array();
   let salt = null;
@@ -96,9 +95,7 @@ function AES_256_CTR_HMAC_SHA256_E(
     TempArray.set([RandomBytes[0], RandomBytes[1]], HashArray.byteLength);
     HashArray = TempArray;
 
-    let HashWithRandom = CryptoJS.lib.WordArray.create(HashArray);
-    let KeyHashHash = CryptoJS.SHA256(HashWithRandom); //密钥两次哈希,附加两字节随机数
-    let HashHashArray = wordArrayToUint8Array(KeyHashHash);
+    let HashHashArray = sha256(HashArray); //密钥两次哈希,附加两字节随机数
 
     ivArray = new Uint8Array(16);
 
@@ -119,66 +116,59 @@ function AES_256_CTR_HMAC_SHA256_E(
         epoch: AdvancedEncObj.TOTPEpoch,
         step: getStep(AdvancedEncObj.TOTPTimeStep),
       };
-      let BaseKeyHash = CryptoJS.SHA256(
+
+      let BaseKeyHash = sha256(
         AdvancedEncObj.TOTPBaseKey !== null &&
           AdvancedEncObj.TOTPBaseKey !== undefined
-          ? AdvancedEncObj.TOTPBaseKey
-          : key
+          ? utf8ToBytes(AdvancedEncObj.TOTPBaseKey)
+          : utf8ToBytes(key)
       );
-      salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
+      salt = totp.generate(Base64.fromUint8Array(BaseKeyHash)); //获取totp一次性密钥
       let key256Bits = pbkdf2(sha256, key, salt, {
         c: 100000,
         dkLen: 32,
       });
-      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
+      KeyHash = key256Bits;
     } else {
       //普通密钥衍生，使用16字节的盐
-      //salt = CryptoJS.lib.WordArray.random(16);
       salt = new Uint8Array(16);
       for (let i = 0; i < salt.byteLength; i++) {
         salt[i] = GetSecureRandomIndex(256);
       }
-      salt = CryptoJS.lib.WordArray.create(salt);
-
-      let key256Bits = pbkdf2(sha256, key, wordArrayToUint8Array(salt), {
+      let key256Bits = pbkdf2(sha256, key, salt, {
         c: 100000,
         dkLen: 32,
       });
-      KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
+      KeyHash = key256Bits;
       ResultLength = ResultLength + 16;
     }
   }
 
-  let iv = CryptoJS.lib.WordArray.create(ivArray);
-  let msg = CryptoJS.lib.WordArray.create(Uint8attr);
+  let iv = ivArray;
+  let msg = Uint8attr;
 
-  let Enc = CryptoJS.AES.encrypt(msg, KeyHash, {
-    mode: CryptoJS.mode.CTR,
-    padding: CryptoJS.pad.NoPadding,
-    iv: iv,
-  });
+  let Enc = AES_CTR(KeyHash, iv).encrypt(msg);
 
   //执行HMAC-SHA256
   if (AdvancedEncObj.UseHMAC) {
-    let Cipher = wordArrayToUint8Array(Enc.ciphertext);
-    Cipher = CryptoJS.lib.WordArray.create(Cipher);
-    HMAC_HASH = CryptoJS.HmacSHA256(Cipher, KeyHash);
+    let Cipher = Enc;
+    HMAC_HASH = hmac(sha256, KeyHash, Cipher);
     ResultLength = ResultLength + 32;
   }
 
   //组装数据，结构为 [密文]-[HMAC_HASH]-[密钥盐值]-[IV(上层函数EncryptHandler:Encrypt添加)]-[高级加密参数(上上层函数CoreHandler:Enc添加)]
-  let CipherTextLength = wordArrayToUint8Array(Enc.ciphertext).byteLength;
+  let CipherTextLength = Enc.byteLength;
   ResultLength = ResultLength + CipherTextLength;
 
   let EncResult = new Uint8Array(ResultLength); //按长度创建密文数据
 
-  EncResult.set(wordArrayToUint8Array(Enc.ciphertext), 0); //密文，长度随机
+  EncResult.set(Enc, 0); //密文，长度随机
   if (AdvancedEncObj.UseHMAC) {
-    EncResult.set(wordArrayToUint8Array(HMAC_HASH), CipherTextLength); //HMAC_HASH，长度32字节
+    EncResult.set(HMAC_HASH, CipherTextLength); //HMAC_HASH，长度32字节
   }
   if (AdvancedEncObj.UsePBKDF2 && !AdvancedEncObj.UseTOTP) {
     EncResult.set(
-      wordArrayToUint8Array(salt),
+      salt,
       AdvancedEncObj.UseHMAC ? CipherTextLength + 32 : CipherTextLength
     ); //单纯密钥衍生 salt，长度16字节
   }
@@ -199,8 +189,8 @@ function AES_256_CTR_HMAC_SHA256_D(
   //执行解密操作
 
   //对密钥执行一重哈希
-  let KeyHash = CryptoJS.SHA256(key);
-  let HashArray = wordArrayToUint8Array(KeyHash);
+  let HashArray = sha256(utf8ToBytes(key));
+  let KeyHash = HashArray;
   let ivArray = new Uint8Array();
 
   if (AdvancedEncObj.UseStrongIV) {
@@ -215,9 +205,7 @@ function AES_256_CTR_HMAC_SHA256_D(
     TempArray.set([RandomBytes[0], RandomBytes[1]], HashArray.byteLength);
     HashArray = TempArray;
 
-    let HashWithRandom = CryptoJS.lib.WordArray.create(HashArray);
-    let KeyHashHash = CryptoJS.SHA256(HashWithRandom); //密钥两次哈希,附加两字节随机数
-    let HashHashArray = wordArrayToUint8Array(KeyHashHash);
+    let HashHashArray = sha256(HashArray); //密钥两次哈希,附加两字节随机数
 
     ivArray = new Uint8Array(16);
 
@@ -239,7 +227,7 @@ function AES_256_CTR_HMAC_SHA256_D(
       c: 100000,
       dkLen: 32,
     });
-    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
+    KeyHash = key256Bits;
   } else if (AdvancedEncObj.UsePBKDF2 && AdvancedEncObj.UseTOTP) {
     //推导TOTP盐值
     totp.options = {
@@ -250,18 +238,18 @@ function AES_256_CTR_HMAC_SHA256_D(
       epoch: AdvancedEncObj.TOTPEpoch,
       step: getStep(AdvancedEncObj.TOTPTimeStep),
     };
-    let BaseKeyHash = CryptoJS.SHA256(
+    let BaseKeyHash = sha256(
       AdvancedEncObj.TOTPBaseKey !== null &&
         AdvancedEncObj.TOTPBaseKey !== undefined
-        ? AdvancedEncObj.TOTPBaseKey
-        : key
+        ? utf8ToBytes(AdvancedEncObj.TOTPBaseKey)
+        : utf8ToBytes(key)
     );
-    salt = totp.generate(BaseKeyHash.toString(CryptoJS.enc.Base64)); //获取totp一次性密钥
+    salt = totp.generate(Base64.fromUint8Array(BaseKeyHash)); //获取totp一次性密钥
     let key256Bits = pbkdf2(sha256, key, salt, {
       c: 100000,
       dkLen: 32,
     });
-    KeyHash = CryptoJS.lib.WordArray.create(key256Bits);
+    KeyHash = key256Bits;
   }
 
   if (AdvancedEncObj.UseHMAC) {
@@ -272,11 +260,7 @@ function AES_256_CTR_HMAC_SHA256_D(
     }
     Uint8attr = Uint8attr.subarray(0, Uint8attr.byteLength - 32);
 
-    let ciphertext = CryptoJS.lib.WordArray.create(Uint8attr);
-
-    let HMAC_HASH_B = wordArrayToUint8Array(
-      CryptoJS.HmacSHA256(ciphertext, KeyHash)
-    );
+    let HMAC_HASH_B = hmac(sha256, KeyHash, Uint8attr);
 
     if (HMAC_HASH.byteLength != HMAC_HASH_B.byteLength) {
       throw new Error("Error Decrypting. HMAC Mismatch."); // HMAC不匹配，阻止进一步解密
@@ -289,16 +273,12 @@ function AES_256_CTR_HMAC_SHA256_D(
     }
   }
 
-  let iv = CryptoJS.lib.WordArray.create(ivArray);
-  let msg = CryptoJS.lib.WordArray.create(Uint8attr);
+  let iv = ivArray;
+  let msg = Uint8attr;
 
-  let Dec = CryptoJS.AES.encrypt(msg, KeyHash, {
-    mode: CryptoJS.mode.CTR,
-    padding: CryptoJS.pad.NoPadding,
-    iv: iv,
-  });
+  let Dec = AES_CTR(KeyHash, iv).encrypt(msg);
 
-  return wordArrayToUint8Array(Dec.ciphertext);
+  return Dec;
 }
 
 //执行AES加密，返回UINT8数组
